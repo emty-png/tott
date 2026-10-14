@@ -1,0 +1,34 @@
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  static:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      # Android resources + manifest must stay well-formed XML or the
+      # build fails late with cryptic AAPT errors. This fails fast.
+      - name: Validate XML resources
+        run: |
+          sudo apt-get update && sudo apt-get install -y libxml2-utils
+          find app/src/main/res -name '*.xml' -print0 | xargs -0 -n1 xmllint --noout
+          xmllint --noout app/src/main/AndroidManifest.xml
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      # ubuntu runners ship an SDK already; just top up licenses + the
+      # exact platform/build-tools (setup-android@v3 tries to install the
+      # long-removed `tools` package and fails).
+      - name: Install SDK packages
+        run: |
+          SDK="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDK" --licenses > /dev/null
+          "$SDK" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Android lint (debug)
+        run: ./gradlew :app:lintDebug --stacktrace

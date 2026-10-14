@@ -1,0 +1,41 @@
+name: release
+
+on:
+  push:
+    tags: ["*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      # ubuntu runners ship an SDK already; just top up licenses + the
+      # exact platform/build-tools (setup-android@v3 tries to install the
+      # long-removed `tools` package and fails).
+      - name: Install SDK packages
+        run: |
+          SDK="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDK" --licenses > /dev/null
+          "$SDK" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+      # NOTE: the APK is signed with the debug key, which is fine for
+      # sideloading but not for the Play Store. For a store release, add a
+      # real keystore as secrets (ANDROID_KEYSTORE_BASE64,
+      # ANDROID_KEY_ALIAS, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_PASSWORD),
+      # decode it to app/keystore.jks in a step above, and point the release
+      # signingConfig at it instead of `signingConfigs.getByName("debug")`.
+      - name: Build release
+        run: ./gradlew :app:assembleRelease --stacktrace
+      - name: Rename APK
+        run: cp app/build/outputs/apk/release/app-release.apk tott-${{ github.ref_name }}.apk
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: tott-*.apk
+          generate_release_notes: true

@@ -13,7 +13,7 @@ import androidx.glance.action.actionStartActivity
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.action.ActionCallback
-import androidx.glance.appwidget.action.RunCallbackAction
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -92,8 +92,7 @@ class TottWidget : GlanceAppWidget() {
                                 Spacer(GlanceModifier.width(8.dp))
                                 androidx.glance.Button(
                                     text = "✓",
-                                    onClick = RunCallbackAction(
-                                        ToggleTaskAction::class.java,
+                                    onClick = actionRunCallback<ToggleTaskAction>(
                                         actionParametersOf(ActionParameters.Key<Long>(KEY_TASK_ID) to t.id)
                                     )
                                 )
