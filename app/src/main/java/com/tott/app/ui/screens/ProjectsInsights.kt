@@ -52,6 +52,13 @@ private fun CardRise(index: Int, content: @Composable () -> Unit) {
 @Composable
 fun ProjectsScreen(tasks: List<TaskEntity>, onOpenProject: (String) -> Unit) {
     val names = tasks.map { it.project }.distinct()
+    if (names.isEmpty()) {
+        Column(Modifier.fillMaxSize().padding(48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("No projects yet", style = MaterialTheme.typography.titleMedium)
+            Text("Add a task to create one.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        return
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 112.dp)

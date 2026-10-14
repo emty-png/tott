@@ -83,19 +83,6 @@ class TaskRepository @Inject constructor(
         box().put(tasks)
     }
 
-    fun seedIfEmpty() {
-        if (box().count() > 0) return
-        val seed = listOf(
-            TaskEntity(title = "Finish Q4 roadmap deck", project = "Work", due = "Today", pri = "high", done = false, subs = listOf(Subtask("Outline slides", true), Subtask("Add metrics", true), Subtask("Review with Sam", false)), order = 1),
-            TaskEntity(title = "Book dentist appointment", project = "Personal", due = "Today", pri = "low", done = false, subs = emptyList(), order = 2),
-            TaskEntity(title = "Reply to design feedback", project = "Work", due = "Today", pri = "med", done = true, subs = emptyList(), order = 3),
-            TaskEntity(title = "Plan weekend trip", project = "Travel", due = "Tomorrow", pri = "med", done = false, subs = listOf(Subtask("Pick dates", false), Subtask("Reserve stay", false)), order = 4),
-            TaskEntity(title = "Renew passport", project = "Personal", due = "Fri", pri = "high", done = false, subs = emptyList(), order = 5),
-            TaskEntity(title = "Grocery run", project = "Home", due = "Fri", pri = "low", done = false, subs = emptyList(), order = 6)
-        )
-        box().put(seed)
-    }
-
     fun projectNames(): List<String> {
         val all = all().map { it.project }.filter { it != "Inbox" }.distinct()
         return listOf("Inbox") + all

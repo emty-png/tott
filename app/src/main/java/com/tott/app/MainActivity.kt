@@ -74,6 +74,8 @@ import com.tott.app.ui.overlays.FocusSheet
 import com.tott.app.ui.screens.InsightsScreen
 import com.tott.app.ui.screens.ProjectsScreen
 import com.tott.app.ui.screens.TasksScreen
+import com.tott.app.ui.onboarding.Onboarding
+import com.tott.app.ui.state.SettingsViewModel
 import com.tott.app.ui.state.TottView
 import com.tott.app.ui.state.TasksViewModel
 import com.tott.app.ui.theme.TottTheme
@@ -96,8 +98,15 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TottRoot(vm: TasksViewModel = hiltViewModel()) {
+fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel = hiltViewModel()) {
     val ui by vm.ui.collectAsState()
+    val firstRun by settings.prefs.firstRun.collectAsState()
+    if (firstRun) {
+        TottTheme(darkTheme = isSystemInDarkTheme()) {
+            Onboarding(onDone = { settings.completeOnboarding() })
+        }
+        return
+    }
     val systemDark = isSystemInDarkTheme()
     val dark = ui.darkTheme ?: systemDark
     val drawerState = rememberDrawerState(DrawerValue.Closed)
