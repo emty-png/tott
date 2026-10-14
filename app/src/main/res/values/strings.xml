@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">tott</string>
+    <string name="widget_desc_tott">Today\'s tasks from tott</string>
     <color name="ic_launcher_background">#6750A4</color>
 </resources>

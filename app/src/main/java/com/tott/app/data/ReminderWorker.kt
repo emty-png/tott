@@ -12,6 +12,7 @@ import dagger.hilt.components.SingletonComponent
 @InstallIn(SingletonComponent::class)
 interface WorkerEntryPoint {
     fun scheduler(): ReminderScheduler
+    fun repo(): TaskRepository
 }
 
 class ReminderWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {

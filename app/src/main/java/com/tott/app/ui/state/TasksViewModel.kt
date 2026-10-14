@@ -2,6 +2,7 @@ package com.tott.app.ui.state
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.glance.appwidget.updateAll
 import com.tott.app.data.PrefsRepository
 import com.tott.app.data.ReminderScheduler
 import com.tott.app.data.TaskEntity
@@ -60,6 +61,11 @@ class TasksViewModel @Inject constructor(
             if (migrated.compareAndSet(false, true)) repo.migrateLegacy()
             val all = repo.all()
             _ui.update { it.copy(tasks = all) }
+            try {
+                com.tott.app.widget.TottWidget().updateAll(appCtx)
+            } catch (e: Exception) {
+                // widget not placed or Glance unavailable; next update cycle covers it
+            }
         }
     }
 

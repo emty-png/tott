@@ -60,6 +60,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.work.runtime)
+    implementation(libs.androidx.glance)
+    implementation(libs.androidx.glance.appwidget)
 
     val composeBom = platform(libs.compose.bom)
     implementation(composeBom)
