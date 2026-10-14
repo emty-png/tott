@@ -10,9 +10,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -44,7 +47,10 @@ import com.tott.app.ui.icons.TottIcons2
 @Composable
 fun SegmentedRow(options: List<String>, selected: String, onSelect: (String) -> Unit) {
     Row(
-        modifier = Modifier.clip(CircleShape).background(Color.Transparent),
+        modifier = Modifier
+            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+            .clip(CircleShape)
+            .background(Color.Transparent),
         horizontalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         options.forEachIndexed { i, o ->
@@ -80,7 +86,7 @@ fun AddTaskDialog(
     var proj by remember { mutableStateOf(initialProject ?: "Inbox") }
     var newProj by remember { mutableStateOf("") }
 
-    Column(Modifier.padding(24.dp)) {
+    Column(Modifier.padding(24.dp).verticalScroll(rememberScrollState()).imePadding()) {
         Text("New task", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Task title") }, singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -121,7 +127,7 @@ fun DetailSheet(
     onToggleDone: () -> Unit
 ) {
     var newSub by remember(task.id) { mutableStateOf("") }
-    Column(Modifier.padding(24.dp)) {
+    Column(Modifier.padding(24.dp).verticalScroll(rememberScrollState()).imePadding()) {
         var title by remember(task.id, task.title) { mutableStateOf(task.title) }
         OutlinedTextField(
             value = title,
