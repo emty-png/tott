@@ -2,6 +2,8 @@ package com.tott.app.ui.state
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tott.app.data.PrefsRepository
+import com.tott.app.data.ReminderScheduler
 import com.tott.app.data.TaskEntity
 import com.tott.app.data.TaskFilter
 import com.tott.app.data.TaskRepository
@@ -37,7 +39,8 @@ data class TottUiState(
 
 @HiltViewModel
 class TasksViewModel @Inject constructor(
-    private val repo: TaskRepository
+    private val repo: TaskRepository,
+    private val reminders: ReminderScheduler
 ) : ViewModel() {
     private val _ui = MutableStateFlow(TottUiState())
     val ui: StateFlow<TottUiState> = _ui.asStateFlow()
@@ -94,9 +97,15 @@ class TasksViewModel @Inject constructor(
     fun closeFocus() = _ui.update { it.copy(focusId = null) }
 
     // mutations return snackbar message + whether undo available
+    private fun syncReminder(id: Long) {
+        val t = repo.get(id) ?: return
+        if (!t.done && t.dueDate >= 0 && t.dueTime >= 0) reminders.schedule(t)
+        else reminders.cancel(id)
+    }
+
     fun toggle(id: Long): Pair<String, Boolean> {
         val t = repo.get(id) ?: return "" to false
-        repo.toggle(id); refresh()
+        repo.toggle(id); syncReminder(id); refresh()
         return if (!t.done) {
             lastToggledToDone = id
             "Task completed" to true
@@ -107,34 +116,40 @@ class TasksViewModel @Inject constructor(
     }
 
     fun undoToggle() {
-        lastToggledToDone?.let { repo.toggle(it); refresh() }
+        lastToggledToDone?.let { repo.toggle(it); syncReminder(it); refresh() }
         lastToggledToDone = null
     }
 
     fun delete(id: Long): String {
+        reminders.cancel(id)
         lastDeleted = repo.delete(id); refresh()
         return "Task deleted"
     }
 
     fun undoDelete() {
-        lastDeleted?.let { repo.restore(it); refresh() }
+        lastDeleted?.let { repo.restore(it); syncReminder(it.id); refresh() }
         lastDeleted = null
     }
 
     fun clearCompleted(): String {
-        val gone = repo.clearCompleted(); refresh()
+        val gone = repo.clearCompleted()
+        gone.forEach { reminders.cancel(it.id) }
+        refresh()
         lastCleared = gone
         return "${gone.size} completed cleared"
     }
 
     fun undoClear() {
-        lastCleared?.let { repo.restoreAll(it); refresh() }
+        lastCleared?.let { repo.restoreAll(it); it.forEach { t -> syncReminder(t.id) }; refresh() }
         lastCleared = null
     }
 
     fun addTask(title: String, project: String, dueDate: Long, dueTime: Int, pri: String) {
-        repo.addFull(title, project, dueDate, dueTime, pri); refresh()
+        val t = repo.addFull(title, project, dueDate, dueTime, pri)
+        syncReminder(t.id); refresh()
     }
+
+    fun sendTestNotification() = reminders.sendTest()
 
     fun projectColors(): Map<String, Long> = repo.projectColorMap()
 

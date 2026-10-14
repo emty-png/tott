@@ -1,10 +1,15 @@
 package com.tott.app
 
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.BackHandler
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -64,6 +69,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -93,10 +99,20 @@ import androidx.compose.runtime.snapshotFlow
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    var pendingDetail = mutableStateOf<Long?>(null)
+        private set
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        pendingDetail.value = intent?.getLongExtra("open_detail", -1)?.takeIf { it > 0 }
         enableEdgeToEdge()
         setContent { TottRoot() }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        pendingDetail.value = intent.getLongExtra("open_detail", -1).takeIf { it > 0 }
     }
 }
 
@@ -124,6 +140,28 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
     val visibleTasks = remember(ui.tasks, ui.query, ui.project, ui.filter, ui.hideDone, ui.sort) { vm.filtered() }
     var showSettings by remember { mutableStateOf(false) }
     BackHandler(enabled = showSettings) { showSettings = false }
+    val activity = LocalContext.current as MainActivity
+    val deepLink by activity.pendingDetail
+    LaunchedEffect(deepLink) {
+        deepLink?.let { vm.openDetail(it); activity.pendingDetail.value = null }
+    }
+    val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    LaunchedEffect(firstRun) {
+        if (!firstRun && Build.VERSION.SDK_INT >= 33 &&
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                activity, android.Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notifLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+    var notifOk by remember { mutableStateOf(true) }
+    LaunchedEffect(showSettings, firstRun) {
+        notifOk = Build.VERSION.SDK_INT < 33 ||
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                activity, android.Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+    }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val snack = remember { SnackbarHostState() }
@@ -292,7 +330,9 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
                             prefs = settings.prefs,
                             projectNames = ui.tasks.map { it.project }.distinct(),
                             projectColors = vm.projectColors(),
-                            onProjectColor = { p, argb -> vm.setProjectColor(p, argb) }
+                            onProjectColor = { p, argb -> vm.setProjectColor(p, argb) },
+                            notifEnabled = notifOk,
+                            onTestNotif = vm::sendTestNotification
                         )
                     } else when (ui.view) {
                         TottView.TASKS -> TasksScreen(

@@ -82,7 +82,9 @@ fun SettingsScreen(
     prefs: PrefsRepository,
     projectNames: List<String>,
     projectColors: Map<String, Long>,
-    onProjectColor: (String, Long?) -> Unit
+    onProjectColor: (String, Long?) -> Unit,
+    notifEnabled: Boolean = true,
+    onTestNotif: () -> Unit = {}
 ) {
     val mode by prefs.themeMode.collectAsState()
     val amoled by prefs.amoled.collectAsState()
@@ -146,6 +148,18 @@ fun SettingsScreen(
         item {
             SectionCard("Motion") {
                 SwitchRow("Reduce animations", "Disables entrance and pop effects", reduceMotion, prefs::setReduceMotion)
+            }
+        }
+        item {
+            SectionCard("Reminders") {
+                Text(
+                    if (notifEnabled) "Notifications are on. Tasks with a time will alert you."
+                    else "Notifications are off — enable them in system settings to get alerts.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(8.dp))
+                TextButton(onClick = onTestNotif) { Text("Send test notification") }
             }
         }
         item {
