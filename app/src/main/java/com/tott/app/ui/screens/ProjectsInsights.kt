@@ -5,8 +5,12 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,7 +39,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.background
-import androidx.compose.ui.text.font.FontWeight
 import com.tott.app.data.TaskEntity
 import com.tott.app.ui.theme.LocalMotion
 
@@ -64,7 +67,7 @@ fun ProjectsScreen(tasks: List<TaskEntity>, colors: Map<String, Long> = emptyMap
     }
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 112.dp)
+        contentPadding = PaddingValues(bottom = 112.dp)
     ) {
         items(names, key = { it }) { n ->
             val l = tasks.filter { it.project == n }
@@ -75,11 +78,11 @@ fun ProjectsScreen(tasks: List<TaskEntity>, colors: Map<String, Long> = emptyMap
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clickable { onOpenProject(n) },
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
                 Column(Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        androidx.compose.foundation.layout.Box(
+                        Box(
                             modifier = Modifier.size(40.dp).clip(CircleShape).background(tint ?: MaterialTheme.colorScheme.primaryContainer),
                             contentAlignment = Alignment.Center
                         ) {
@@ -130,7 +133,7 @@ fun InsightsScreen(tasks: List<TaskEntity>) {
     }
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 112.dp)
+        contentPadding = PaddingValues(bottom = 112.dp)
     ) {
         item {
             CardRise(0) {
@@ -198,7 +201,7 @@ fun InsightsScreen(tasks: List<TaskEntity>) {
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
                 Column(Modifier.padding(16.dp)) {
                     Text("Open tasks by day", style = MaterialTheme.typography.titleMedium)
@@ -219,7 +222,7 @@ fun InsightsScreen(tasks: List<TaskEntity>) {
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = androidx.compose.foundation.layout.Arrangement.Bottom
                             ) {
-                                androidx.compose.foundation.layout.Box(
+                                Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height((v.toFloat() / mx.toFloat() * 100).dp.coerceAtLeast(4.dp).coerceAtMost(96.dp))

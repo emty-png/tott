@@ -3,12 +3,12 @@ package com.tott.app.ui.state
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.glance.appwidget.updateAll
-import com.tott.app.data.PrefsRepository
 import com.tott.app.data.ReminderScheduler
 import com.tott.app.data.TaskEntity
 import com.tott.app.data.TaskFilter
 import com.tott.app.data.TaskRepository
 import com.tott.app.data.TaskSort
+import com.tott.app.widget.TottWidget
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -29,12 +29,10 @@ data class TottUiState(
     val sort: TaskSort = TaskSort.DUE,
     val hideDone: Boolean = false,
     val tasks: List<TaskEntity> = emptyList(),
-    val darkTheme: Boolean? = null, // null = follow system
     val detailId: Long? = null,
     val showAdd: Boolean = false,
     val addDate: Long? = null,
     val showMenu: Boolean = false,
-    val showDrawer: Boolean = false,
     val focusId: Long? = null
 )
 
@@ -62,7 +60,7 @@ class TasksViewModel @Inject constructor(
             val all = repo.all()
             _ui.update { it.copy(tasks = all) }
             try {
-                com.tott.app.widget.TottWidget().updateAll(appCtx)
+                TottWidget().updateAll(appCtx)
             } catch (e: Exception) {
                 // widget not placed or Glance unavailable; next update cycle covers it
             }
@@ -77,7 +75,7 @@ class TasksViewModel @Inject constructor(
     fun openCount(): Int = _ui.value.tasks.count { !it.done }
 
     // nav
-    fun setView(v: TottView) = _ui.update { it.copy(view = v, searchVisible = false, query = "", project = null, detailId = null, focusId = null, showAdd = false, showMenu = false, showDrawer = false) }
+    fun setView(v: TottView) = _ui.update { it.copy(view = v, searchVisible = false, query = "", project = null, detailId = null, focusId = null, showAdd = false, showMenu = false) }
     fun setFilter(f: TaskFilter) = _ui.update { it.copy(filter = f) }
     fun setQuery(q: String) = _ui.update { it.copy(query = q) }
     fun toggleSearch() = _ui.update { it.copy(searchVisible = !it.searchVisible, query = "") }
@@ -85,11 +83,6 @@ class TasksViewModel @Inject constructor(
     fun clearProject() = _ui.update { it.copy(project = null) }
     fun setSort(s: TaskSort) = _ui.update { it.copy(sort = s, showMenu = false) }
     fun toggleHideDone() = _ui.update { it.copy(hideDone = !it.hideDone, showMenu = false) }
-    fun toggleTheme() = _ui.update { cur ->
-        // null(system)-> flip based on nothing; UI layer resolves system and flips
-        cur.copy(darkTheme = !(cur.darkTheme ?: false))
-    }
-    fun setDarkExplicit(dark: Boolean) = _ui.update { it.copy(darkTheme = dark) }
 
     // overlays
     fun openDetail(id: Long) = _ui.update { it.copy(detailId = id) }
@@ -98,8 +91,6 @@ class TasksViewModel @Inject constructor(
     fun closeAdd() = _ui.update { it.copy(showAdd = false, addDate = null) }
     fun openMenu() = _ui.update { it.copy(showMenu = true) }
     fun closeMenu() = _ui.update { it.copy(showMenu = false) }
-    fun openDrawer() = _ui.update { it.copy(showDrawer = true) }
-    fun closeDrawer() = _ui.update { it.copy(showDrawer = false) }
     fun openFocus(id: Long) = _ui.update { it.copy(focusId = id, detailId = null) }
     fun closeFocus() = _ui.update { it.copy(focusId = null) }
 

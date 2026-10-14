@@ -70,6 +70,11 @@ import com.tott.app.ui.theme.LocalMotion
 import kotlin.math.min
 
 // 1:1 rise motion: rise 350ms decelerate, stagger min(i,10)*35ms
+private sealed interface TaskListRow {
+    val animIndex: Int
+    data class Header(val group: String, override val animIndex: Int) : TaskListRow
+    data class Task(val task: TaskEntity, override val animIndex: Int) : TaskListRow
+}
 @Composable
 private fun RiseIn(index: Int, animKey: String, content: @Composable () -> Unit) {
     if (!LocalMotion.current) { content(); return }
@@ -172,16 +177,19 @@ fun TasksScreen(
                 }
             }
         } else {
-            // Precompute groups once per list change (not per recomposition) + contentType for reuse.
-            val grouped = remember(visibleTasks) {
-                listOf("Overdue", "Today", "Tomorrow", "Later", "Completed").mapNotNull { g ->
+            // Rows (headers + tasks) with stable stagger indices, computed once per list
+            // change. Long-press drag reorder only applies in manual DUE order.
+            val rows = remember(visibleTasks) {
+                val out = mutableListOf<TaskListRow>()
+                listOf("Overdue", "Today", "Tomorrow", "Later", "Completed").forEach { g ->
                     val items = visibleTasks.filter { TaskRepository.groupOf(it) == g }
-                    if (items.isNotEmpty()) g to items else null
+                    if (items.isNotEmpty()) {
+                        out.add(TaskListRow.Header(g, out.size + 1))
+                        items.forEach { t -> out.add(TaskListRow.Task(t, out.size + 1)) }
+                    }
                 }
+                out
             }
-            var flat = 1
-            // Long-press drag reorder (only in manual DUE order): states live here so the
-            // drop target highlights while dragging; persisted via onMove on release.
             var dragId by remember { mutableStateOf<Long?>(null) }
             var dragDy by remember { mutableFloatStateOf(0f) }
             var drop by remember { mutableStateOf<Pair<Long, Boolean>?>(null) }
@@ -194,52 +202,55 @@ fun TasksScreen(
                 drop = target?.let { val id = it.key as Long; id to (centerY < it.offset + it.size / 2) }
             }
             LazyColumn(state = listState, contentPadding = PaddingValues(bottom = 112.dp)) {
-                grouped.forEach { (g, items) ->
-                    val hi = flat; flat++
-                    item(key = "h-$g", contentType = "header") {
-                        RiseIn(hi, animKey) { GroupHeader(g) }
-                    }
-                    items(items, key = { it.id }, contentType = { "task" }) { t ->
-                        val idx = flat; flat++
-                        val dragging = dragId == t.id
-                        RiseIn(idx, animKey) {
-                            Box(
-                                Modifier
-                                    .graphicsLayer {
-                                        if (dragging) {
-                                            translationY = dragDy
-                                            scaleX = 1.02f
-                                            scaleY = 1.02f
+                items(
+                    rows,
+                    key = { row -> if (row is TaskListRow.Header) "h-${row.group}" else (row as TaskListRow.Task).task.id },
+                    contentType = { row -> if (row is TaskListRow.Header) "header" else "task" }
+                ) { row ->
+                    when (row) {
+                        is TaskListRow.Header -> RiseIn(row.animIndex, animKey) { GroupHeader(row.group) }
+                        is TaskListRow.Task -> {
+                            val t = row.task
+                            val dragging = dragId == t.id
+                            RiseIn(row.animIndex, animKey) {
+                                Box(
+                                    Modifier
+                                        .graphicsLayer {
+                                            if (dragging) {
+                                                translationY = dragDy
+                                                scaleX = 1.02f
+                                                scaleY = 1.02f
+                                            }
                                         }
-                                    }
-                                    .zIndex(if (dragging) 1f else 0f)
-                                    .then(
-                                        if (reorderable) Modifier.pointerInput(t.id) {
-                                            detectDragGesturesAfterLongPress(
-                                                onDragStart = { dragId = t.id; dragDy = 0f; drop = null },
-                                                onDragEnd = {
-                                                    drop?.let { (tid, before) -> onMove(t.id, tid, before) }
-                                                    dragId = null; drop = null
-                                                },
-                                                onDragCancel = { dragId = null; drop = null },
-                                                onDrag = { change, dragAmount ->
-                                                    change.consume()
-                                                    dragDy += dragAmount.y
-                                                    val infos = listState.layoutInfo.visibleItemsInfo
-                                                    val self = infos.firstOrNull { it.key == t.id }
-                                                    if (self != null) updateDrop(self.offset + self.size / 2f + dragDy)
-                                                }
-                                            )
-                                        } else Modifier
+                                        .zIndex(if (dragging) 1f else 0f)
+                                        .then(
+                                            if (reorderable) Modifier.pointerInput(t.id) {
+                                                detectDragGesturesAfterLongPress(
+                                                    onDragStart = { dragId = t.id; dragDy = 0f; drop = null },
+                                                    onDragEnd = {
+                                                        drop?.let { (tid, before) -> onMove(t.id, tid, before) }
+                                                        dragId = null; drop = null
+                                                    },
+                                                    onDragCancel = { dragId = null; drop = null },
+                                                    onDrag = { change, dragAmount ->
+                                                        change.consume()
+                                                        dragDy += dragAmount.y
+                                                        val infos = listState.layoutInfo.visibleItemsInfo
+                                                        val self = infos.firstOrNull { it.key == t.id }
+                                                        if (self != null) updateDrop(self.offset + self.size / 2f + dragDy)
+                                                    }
+                                                )
+                                            } else Modifier
+                                        )
+                                ) {
+                                    SwipeTaskRow(
+                                        t,
+                                        onToggle = { onToggle(t.id) },
+                                        onDelete = { onDelete(t.id) },
+                                        onOpen = { onOpenDetail(t.id) },
+                                        highlight = drop?.first == t.id
                                     )
-                            ) {
-                                SwipeTaskRow(
-                                    t,
-                                    onToggle = { onToggle(t.id) },
-                                    onDelete = { onDelete(t.id) },
-                                    onOpen = { onOpenDetail(t.id) },
-                                    highlight = drop?.first == t.id
-                                )
+                                }
                             }
                         }
                     }
@@ -252,7 +263,7 @@ fun TasksScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SwipeTaskRow(t: TaskEntity, onToggle: () -> Unit, onDelete: () -> Unit, onOpen: () -> Unit, highlight: Boolean = false) {
-    // 1:1 swipe: right (>96px) = toggle, left = delete; bg primary/error-container
+    // Swipe right completes, swipe left deletes; tinted primary/error-container while held.
     val state = rememberSwipeToDismissBoxState(
         confirmValueChange = { v ->
             when (v) {

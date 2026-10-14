@@ -9,8 +9,6 @@ import javax.inject.Singleton
 enum class TaskFilter { ALL, TODAY, HIGH, DONE }
 enum class TaskSort { DUE, PRI, AZ }
 
-data class DeletedTask(val task: TaskEntity, val index: Int)
-
 @Singleton
 class TaskRepository @Inject constructor(
     private val store: BoxStore
@@ -18,8 +16,6 @@ class TaskRepository @Inject constructor(
     private fun box(): Box<TaskEntity> = store.boxFor(TaskEntity::class.java)
 
     private fun effectiveOrder(t: TaskEntity): Long = if (t.sortOrder != 0L) t.sortOrder else t.order
-
-    fun observeAll(): List<TaskEntity> = box().all.sortedBy { effectiveOrder(it) }
 
     fun all(): List<TaskEntity> = box().all.sortedBy { effectiveOrder(it) }
 
@@ -88,6 +84,7 @@ class TaskRepository @Inject constructor(
     }
 
     fun add(title: String, project: String, due: String, pri: String): TaskEntity {
+        // Back-compat shim: string labels map onto real dates.
         val today = java.time.LocalDate.now().toEpochDay()
         val epoch = when (due) {
             "Today" -> today

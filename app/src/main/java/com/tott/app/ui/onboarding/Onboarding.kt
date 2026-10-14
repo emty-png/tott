@@ -31,8 +31,6 @@ import androidx.compose.ui.unit.dp
 import com.tott.app.ui.icons.TottIcons2
 import kotlinx.coroutines.launch
 
-private data class Page(val title: String, val body: String, val icon: @Composable () -> Unit)
-
 @Composable
 fun Onboarding(onDone: () -> Unit) {
     val pages = listOf(

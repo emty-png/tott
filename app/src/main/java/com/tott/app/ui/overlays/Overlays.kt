@@ -14,14 +14,16 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -31,6 +33,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,10 +44,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import com.bumptech.glide.integration.compose.GlideImage
 import com.tott.app.data.TaskEntity
+import com.tott.app.data.TaskRepository
 import com.tott.app.ui.components.TottFilterChip
 import com.tott.app.ui.icons.TottIcons2
 
@@ -125,7 +139,10 @@ fun AddTaskDialog(
         Text("Repeat", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
         SegmentedRow(listOf("Never", "Daily", "Weekly"), repeat) { repeat = it }
         Text("Project", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+        ) {
             projects.forEach { p ->
                 TottFilterChip(p, proj == p) { proj = p }
             }
@@ -147,10 +164,10 @@ fun AddTaskDialog(
     }
 
     if (showDate) {
-        val dpState = androidx.compose.material3.rememberDatePickerState(
+        val dpState = rememberDatePickerState(
             initialSelectedDateMillis = (if (dueDate >= 0) dueDate else todayEpoch) * 86_400_000
         )
-        androidx.compose.material3.DatePickerDialog(
+        DatePickerDialog(
             onDismissRequest = { showDate = false },
             confirmButton = {
                 TextButton(onClick = {
@@ -159,18 +176,18 @@ fun AddTaskDialog(
                 }) { Text("OK") }
             },
             dismissButton = { TextButton(onClick = { showDate = false }) { Text("Cancel") } }
-        ) { androidx.compose.material3.DatePicker(state = dpState) }
+        ) { DatePicker(state = dpState) }
     }
     if (showTime) {
-        val tpState = androidx.compose.material3.rememberTimePickerState(
+        val tpState = rememberTimePickerState(
             initialHour = if (dueTime >= 0) dueTime / 60 else 9,
             initialMinute = if (dueTime >= 0) dueTime % 60 else 0,
-            is24Hour = true
+            is24Hour = android.text.format.DateFormat.is24HourFormat(LocalContext.current)
         )
         AlertDialog(
             onDismissRequest = { showTime = false },
             title = { Text("Time") },
-            text = { androidx.compose.material3.TimePicker(state = tpState) },
+            text = { TimePicker(state = tpState) },
             confirmButton = {
                 TextButton(onClick = {
                     dueTime = tpState.hour * 60 + tpState.minute
@@ -202,17 +219,24 @@ fun DetailSheet(
 ) {
     var newSub by remember(task.id) { mutableStateOf("") }
     var viewer by remember(task.id) { mutableStateOf<String?>(null) }
+    val focusManager = LocalFocusManager.current
     Column(Modifier.padding(24.dp).verticalScroll(rememberScrollState()).imePadding()) {
-        var title by remember(task.id, task.title) { mutableStateOf(task.title) }
+        var title by remember(task.id) { mutableStateOf(task.title) }
+        fun commitTitle() {
+            val v = title.trim()
+            if (v.isNotEmpty() && v != task.title) onRename(v)
+        }
         OutlinedTextField(
             value = title,
-            onValueChange = { title = it; if (it.isNotBlank()) onRename(it) },
+            onValueChange = { title = it },
             singleLine = true,
             textStyle = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.fillMaxWidth()
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { commitTitle(); focusManager.clearFocus() }),
+            modifier = Modifier.fillMaxWidth().onFocusChanged { if (!it.isFocused) commitTitle() }
         )
         val repeatLabel = when (task.rrule) { "daily" -> " · Repeats daily"; "weekly" -> " · Repeats weekly"; else -> "" }
-        Text("${task.project} · Due ${com.tott.app.data.TaskRepository.displayDue(task)}$repeatLabel · ${mapOf("high" to "High", "med" to "Medium", "low" to "Low")[task.pri]} priority",
+        Text("${task.project} · Due ${TaskRepository.displayDue(task)}$repeatLabel · ${mapOf("high" to "High", "med" to "Medium", "low" to "Low")[task.pri]} priority",
             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp, bottom = 8.dp))
         if (task.subs.isNotEmpty()) {
@@ -251,7 +275,7 @@ fun DetailSheet(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             task.imageUris.forEach { path ->
                 Box(Modifier.size(64.dp)) {
-                    com.bumptech.glide.integration.compose.GlideImage(
+                    GlideImage(
                         model = java.io.File(path),
                         contentDescription = "Attachment",
                         modifier = Modifier.size(64.dp).clip(RoundedCornerShape(8.dp)).clickable { viewer = path }
@@ -278,9 +302,9 @@ fun DetailSheet(
         }
     }
     viewer?.let { path ->
-        androidx.compose.ui.window.Dialog(onDismissRequest = { viewer = null }) {
+        Dialog(onDismissRequest = { viewer = null }) {
             Box(Modifier.fillMaxWidth()) {
-                com.bumptech.glide.integration.compose.GlideImage(
+                GlideImage(
                     model = java.io.File(path),
                     contentDescription = "Attachment fullscreen",
                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
