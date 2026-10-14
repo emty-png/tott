@@ -177,6 +177,19 @@ class TaskRepository @Inject constructor(
         b.query(ProjectStyle_.project.equal(project)).build().findFirst()?.let { b.remove(it) }
     }
 
+    /** Manual reorder: place [id] before/after [targetId] in global order, then renumber. */
+    fun moveTask(id: Long, targetId: Long, placeBefore: Boolean) {
+        if (id == targetId) return
+        val b = box()
+        val base = b.all.sortedBy { if (it.sortOrder != 0L) it.sortOrder else it.order }.toMutableList()
+        val dragged = base.firstOrNull { it.id == id } ?: return
+        base.remove(dragged)
+        val ti = base.indexOfFirst { it.id == targetId }.takeIf { it >= 0 } ?: return
+        base.add(if (placeBefore) ti else ti + 1, dragged)
+        base.forEachIndexed { i, t -> t.sortOrder = (i + 1) * 1000L }
+        b.put(base)
+    }
+
     companion object {
         private fun todayEpoch(): Long = java.time.LocalDate.now().toEpochDay()
 

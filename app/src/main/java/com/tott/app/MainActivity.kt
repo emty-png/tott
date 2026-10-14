@@ -354,7 +354,9 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
                                 val msg = vm.delete(id)
                                 scope.launch { showSnack(msg, vm::undoDelete) }
                             },
-                            onOpenDetail = vm::openDetail
+                            onOpenDetail = vm::openDetail,
+                            onMove = { id, targetId, before -> vm.moveTask(id, targetId, before) },
+                            reorderable = ui.sort == TaskSort.DUE
                         )
                         TottView.PROJECTS -> ProjectsScreen(ui.tasks, vm.projectColors()) { vm.setProject(it) }
                         TottView.CALENDAR -> CalendarScreen(

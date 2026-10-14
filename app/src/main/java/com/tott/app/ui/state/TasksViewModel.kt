@@ -164,4 +164,8 @@ class TasksViewModel @Inject constructor(
     fun renameTask(id: Long, title: String) { repo.updateTitle(id, title); refresh() }
     fun toggleSub(id: Long, i: Int) { repo.toggleSub(id, i); refresh() }
     fun addSub(id: Long, t: String) { repo.addSub(id, t); refresh() }
+
+    fun moveTask(id: Long, targetId: Long, placeBefore: Boolean) {
+        repo.moveTask(id, targetId, placeBefore); refresh()
+    }
 }
