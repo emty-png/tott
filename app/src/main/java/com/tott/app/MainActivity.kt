@@ -48,9 +48,11 @@ import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -77,7 +79,11 @@ import com.tott.app.ui.state.TasksViewModel
 import com.tott.app.ui.theme.TottTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.snapshotFlow
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -97,6 +103,25 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel()) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val snack = remember { SnackbarHostState() }
+    // 1:1 scroll behaviors: hoisted Tasks list state drives FAB collapse + TopBar tint
+    val tasksListState = rememberLazyListState()
+    var fabExpanded by remember { mutableStateOf(true) }
+    var lastScroll by remember { mutableIntStateOf(0) }
+    LaunchedEffect(tasksListState) {
+        snapshotFlow { tasksListState.firstVisibleItemIndex * 100000 + tasksListState.firstVisibleItemScrollOffset }
+            .distinctUntilChanged()
+            .map { it }
+            .collectLatest { cur ->
+                // HTML: fab.min when scrolling down && offset>40; topbar.is-scrolled when >4
+                fabExpanded = !(cur > lastScroll && cur > 40)
+                lastScroll = cur
+            }
+    }
+    val topScrolled by remember {
+        derivedStateOf {
+            tasksListState.firstVisibleItemIndex > 0 || tasksListState.firstVisibleItemScrollOffset > 4
+        }
+    }
 
     suspend fun showSnack(msg: String, undo: (() -> Unit)?) {
         val res = snack.showSnackbar(msg, actionLabel = if (undo != null) "Undo" else null, duration = SnackbarDuration.Short)
@@ -166,7 +191,9 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel()) {
                                 }
                             }
                         },
-                        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = if (topScrolled && ui.view == TottView.TASKS) MaterialTheme.colorScheme.surfaceContainer else MaterialTheme.colorScheme.surface
+                        )
                     )
                 },
                 bottomBar = {
@@ -202,6 +229,7 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel()) {
                             text = { Text("New task") },
                             icon = { Icon(TottIcons2.Add, contentDescription = null) },
                             onClick = { vm.openAdd() },
+                            expanded = fabExpanded,
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                         )
@@ -218,12 +246,17 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel()) {
                             searchVisible = ui.searchVisible,
                             filter = ui.filter,
                             project = ui.project,
+                            listState = tasksListState,
                             onQuery = vm::setQuery,
                             onFilter = vm::setFilter,
                             onClearProject = vm::clearProject,
                             onToggle = { id ->
                                 val (msg, canUndo) = vm.toggle(id)
                                 scope.launch { showSnack(msg, if (canUndo) vm::undoToggle else null) }
+                            },
+                            onDelete = { id ->
+                                val msg = vm.delete(id)
+                                scope.launch { showSnack(msg, vm::undoDelete) }
                             },
                             onOpenDetail = vm::openDetail
                         )
