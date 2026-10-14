@@ -126,6 +126,13 @@ class TasksViewModel @Inject constructor(
         repo.add(title, project, due, pri); refresh()
     }
 
+    fun projectColors(): Map<String, Long> = repo.projectColorMap()
+
+    fun setProjectColor(project: String, argb: Long?) {
+        if (argb == null) repo.clearProjectColor(project) else repo.setProjectColor(project, argb)
+        refresh()
+    }
+
     fun renameTask(id: Long, title: String) { repo.updateTitle(id, title); refresh() }
     fun toggleSub(id: Long, i: Int) { repo.toggleSub(id, i); refresh() }
     fun addSub(id: Long, t: String) { repo.addSub(id, t); refresh() }

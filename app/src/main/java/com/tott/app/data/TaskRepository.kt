@@ -88,6 +88,24 @@ class TaskRepository @Inject constructor(
         return listOf("Inbox") + all
     }
 
+    fun projectColorMap(): Map<String, Long> {
+        return try {
+            store.boxFor(ProjectStyle::class.java).all.associate { it.project to it.colorArgb }
+        } catch (e: Exception) { emptyMap() }
+    }
+
+    fun setProjectColor(project: String, argb: Long) {
+        val b = store.boxFor(ProjectStyle::class.java)
+        val existing = b.query(ProjectStyle_.project.equal(project)).build().findFirst()
+        if (existing != null) { existing.colorArgb = argb; b.put(existing) }
+        else b.put(ProjectStyle(project = project, colorArgb = argb))
+    }
+
+    fun clearProjectColor(project: String) {
+        val b = store.boxFor(ProjectStyle::class.java)
+        b.query(ProjectStyle_.project.equal(project)).build().findFirst()?.let { b.remove(it) }
+    }
+
     companion object {
         fun groupOf(t: TaskEntity): String = when {
             t.done -> "Completed"

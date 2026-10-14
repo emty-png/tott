@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import com.tott.app.data.Subtask
 import com.tott.app.data.TaskEntity
 import com.tott.app.ui.icons.TottIcons2
+import com.tott.app.ui.theme.LocalCompact
 
 @Composable
 fun CircleCheck(checked: Boolean, onClick: () -> Unit, contentDesc: String) {
@@ -93,7 +94,7 @@ fun HeroCard(open: Int, total: Int) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
             .background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(20.dp)
+            .padding(if (LocalCompact.current) 14.dp else 20.dp)
     ) {
         Text("Today", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
         Text("$open of $total tasks left", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.padding(top = 4.dp))

@@ -51,10 +51,36 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "2:7153761791214519503",
+      "lastPropertyId": "3:5885549730957246870",
+      "name": "ProjectStyle",
+      "properties": [
+        {
+          "id": "1:5527375811768710207",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:3242950562777473775",
+          "name": "project",
+          "indexId": "1:1770600529805490305",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "3:5885549730957246870",
+          "name": "colorArgb",
+          "type": 6
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "1:3445938173185266592",
-  "lastIndexId": "0:0",
+  "lastEntityId": "2:7153761791214519503",
+  "lastIndexId": "1:1770600529805490305",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,

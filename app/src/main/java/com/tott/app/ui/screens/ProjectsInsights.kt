@@ -32,13 +32,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.background
 import androidx.compose.ui.text.font.FontWeight
 import com.tott.app.data.TaskEntity
+import com.tott.app.ui.theme.LocalMotion
 
 @Composable
 private fun CardRise(index: Int, content: @Composable () -> Unit) {
+    if (!LocalMotion.current) { content(); return }
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { visible = true }
     val delay = kotlin.math.min(index, 10) * 35
@@ -50,7 +53,7 @@ private fun CardRise(index: Int, content: @Composable () -> Unit) {
 }
 
 @Composable
-fun ProjectsScreen(tasks: List<TaskEntity>, onOpenProject: (String) -> Unit) {
+fun ProjectsScreen(tasks: List<TaskEntity>, colors: Map<String, Long> = emptyMap(), onOpenProject: (String) -> Unit) {
     val names = tasks.map { it.project }.distinct()
     if (names.isEmpty()) {
         Column(Modifier.fillMaxSize().padding(48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -67,6 +70,7 @@ fun ProjectsScreen(tasks: List<TaskEntity>, onOpenProject: (String) -> Unit) {
             val l = tasks.filter { it.project == n }
             val d = l.count { it.done }
             CardRise(names.indexOf(n)) {
+            val tint = colors[n]?.let { Color(it) }
             Card(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clickable { onOpenProject(n) },
                 shape = RoundedCornerShape(12.dp),
@@ -76,10 +80,10 @@ fun ProjectsScreen(tasks: List<TaskEntity>, onOpenProject: (String) -> Unit) {
                 Column(Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         androidx.compose.foundation.layout.Box(
-                            modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+                            modifier = Modifier.size(40.dp).clip(CircleShape).background(tint ?: MaterialTheme.colorScheme.primaryContainer),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(n.firstOrNull()?.toString() ?: "?", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text(n.firstOrNull()?.toString() ?: "?", style = MaterialTheme.typography.titleMedium, color = if (tint != null) Color.White else MaterialTheme.colorScheme.onPrimaryContainer)
                         }
                         Spacer(Modifier.padding(8.dp))
                         Column(Modifier.weight(1f)) {
@@ -91,6 +95,7 @@ fun ProjectsScreen(tasks: List<TaskEntity>, onOpenProject: (String) -> Unit) {
                     LinearProgressIndicator(
                         progress = { if (l.isEmpty()) 0f else d.toFloat() / l.size.toFloat() },
                         modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                        color = tint ?: MaterialTheme.colorScheme.primary,
                         gapSize = 0.dp,
                         drawStopIndicator = {}
                     )

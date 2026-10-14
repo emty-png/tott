@@ -61,11 +61,14 @@ import com.tott.app.ui.components.HeroCard
 import com.tott.app.ui.components.PriorityPill
 import com.tott.app.ui.components.TottFilterChip
 import com.tott.app.ui.icons.TottIcons2
+import com.tott.app.ui.theme.LocalCompact
+import com.tott.app.ui.theme.LocalMotion
 import kotlin.math.min
 
 // 1:1 rise motion: rise 350ms decelerate, stagger min(i,10)*35ms
 @Composable
 private fun RiseIn(index: Int, animKey: String, content: @Composable () -> Unit) {
+    if (!LocalMotion.current) { content(); return }
     var visible by remember(animKey) { mutableStateOf(false) }
     LaunchedEffect(animKey) { visible = true }
     val delay = min(index, 10) * 35
@@ -227,9 +230,11 @@ private fun SwipeTaskRow(t: TaskEntity, onToggle: () -> Unit, onDelete: () -> Un
 @Composable
 fun TaskRow(t: TaskEntity, onToggle: () -> Unit, onOpen: () -> Unit) {
     // 1:1 pop 400ms on check
+    val motion = LocalMotion.current
+    val compact = LocalCompact.current
     val pop = remember(t.id) { Animatable(1f) }
-    LaunchedEffect(t.done) {
-        if (t.done) {
+    LaunchedEffect(t.done, motion) {
+        if (t.done && motion) {
             pop.animateTo(1.3f, tween(160, easing = FastOutSlowInEasing))
             pop.animateTo(1f, tween(240, easing = FastOutSlowInEasing))
         }
@@ -240,7 +245,7 @@ fun TaskRow(t: TaskEntity, onToggle: () -> Unit, onOpen: () -> Unit) {
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surface)
             .clickable(onClick = onOpen)
-            .padding(vertical = 12.dp, horizontal = 4.dp),
+            .padding(vertical = if (compact) 8.dp else 12.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // circle checkbox 1:1 (.chk 24px, 2px outline ring)

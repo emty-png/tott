@@ -8,9 +8,13 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 
-private val LightScheme = lightColorScheme(
+internal val LightScheme = lightColorScheme(
     primary = LightPrimary,
     onPrimary = LightOnPrimary,
     primaryContainer = LightPrimaryContainer,
@@ -45,7 +49,7 @@ private val LightScheme = lightColorScheme(
     scrim = LightScrim
 )
 
-private val DarkScheme = darkColorScheme(
+internal val DarkScheme = darkColorScheme(
     primary = DarkPrimary,
     onPrimary = DarkOnPrimary,
     primaryContainer = DarkPrimaryContainer,
@@ -84,19 +88,34 @@ private val DarkScheme = darkColorScheme(
 fun TottTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
+    accentSeed: Color? = null,
+    amoled: Boolean = false,
+    fontScale: Float = 1f,
+    compact: Boolean = false,
+    motion: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
-    val scheme = when {
+    var scheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        accentSeed != null ->
+            if (darkTheme) accentDark(accentSeed) else accentLight(accentSeed)
         darkTheme -> DarkScheme
         else -> LightScheme
     }
-    MaterialTheme(
-        colorScheme = scheme,
-        typography = TottTypography,
-        shapes = TottShapes,
-        content = content
-    )
+    if (amoled && darkTheme) scheme = scheme.amoled()
+    val density = LocalDensity.current
+    CompositionLocalProvider(
+        LocalDensity provides Density(density.density, fontScale),
+        LocalCompact provides compact,
+        LocalMotion provides motion
+    ) {
+        MaterialTheme(
+            colorScheme = scheme,
+            typography = TottTypography,
+            shapes = TottShapes,
+            content = content
+        )
+    }
 }

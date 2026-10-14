@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -62,6 +63,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -75,6 +77,7 @@ import com.tott.app.ui.screens.InsightsScreen
 import com.tott.app.ui.screens.ProjectsScreen
 import com.tott.app.ui.screens.TasksScreen
 import com.tott.app.ui.onboarding.Onboarding
+import com.tott.app.ui.settings.SettingsScreen
 import com.tott.app.ui.state.SettingsViewModel
 import com.tott.app.ui.state.TottView
 import com.tott.app.ui.state.TasksViewModel
@@ -108,7 +111,16 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
         return
     }
     val systemDark = isSystemInDarkTheme()
-    val dark = ui.darkTheme ?: systemDark
+    val mode by settings.prefs.themeMode.collectAsState()
+    val amoled by settings.prefs.amoled.collectAsState()
+    val dynamic by settings.prefs.dynamic.collectAsState()
+    val accent by settings.prefs.accent.collectAsState()
+    val fontScale by settings.prefs.fontScale.collectAsState()
+    val compact by settings.prefs.compact.collectAsState()
+    val reduceMotion by settings.prefs.reduceMotion.collectAsState()
+    val dark = when (mode) { "light" -> false; "dark" -> true; else -> systemDark }
+    var showSettings by remember { mutableStateOf(false) }
+    BackHandler(enabled = showSettings) { showSettings = false }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val snack = remember { SnackbarHostState() }
@@ -137,7 +149,15 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
         if (res == SnackbarResult.ActionPerformed) undo?.invoke()
     }
 
-    TottTheme(darkTheme = dark) {
+    TottTheme(
+        darkTheme = dark,
+        dynamicColor = dynamic,
+        accentSeed = if (accent == 0xFF6750A4L) null else Color(accent),
+        amoled = amoled,
+        fontScale = fontScale,
+        compact = compact,
+        motion = !reduceMotion
+    ) {
         ModalNavigationDrawer(
             drawerState = drawerState,
             drawerContent = {
@@ -148,12 +168,13 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
                         .padding(12.dp)
                 ) {
                     Text("TaskFlow", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(16.dp))
-                    DrawerItem("Tasks", TottIcons2.Task, ui.view == TottView.TASKS) { vm.setView(TottView.TASKS); scope.launch { drawerState.close() } }
-                    DrawerItem("Projects", TottIcons2.Folder, ui.view == TottView.PROJECTS) { vm.setView(TottView.PROJECTS); scope.launch { drawerState.close() } }
-                    DrawerItem("Insights", TottIcons2.Chart, ui.view == TottView.INSIGHTS) { vm.setView(TottView.INSIGHTS); scope.launch { drawerState.close() } }
+                    DrawerItem("Tasks", TottIcons2.Task, ui.view == TottView.TASKS && !showSettings) { vm.setView(TottView.TASKS); showSettings = false; scope.launch { drawerState.close() } }
+                    DrawerItem("Projects", TottIcons2.Folder, ui.view == TottView.PROJECTS && !showSettings) { vm.setView(TottView.PROJECTS); showSettings = false; scope.launch { drawerState.close() } }
+                    DrawerItem("Insights", TottIcons2.Chart, ui.view == TottView.INSIGHTS && !showSettings) { vm.setView(TottView.INSIGHTS); showSettings = false; scope.launch { drawerState.close() } }
+                    DrawerItem("Settings", TottIcons2.Settings, showSettings) { showSettings = true; scope.launch { drawerState.close() } }
                     HorizontalDivider(Modifier.padding(16.dp))
                     DrawerItem("Toggle dark theme", TottIcons2.Moon, false) {
-                        vm.setDarkExplicit(!dark); scope.launch { drawerState.close() }
+                        settings.prefs.setThemeMode(if (dark) "light" else "dark"); scope.launch { drawerState.close() }
                     }
                     DrawerItem("Clear completed (${ui.tasks.count { it.done }})", TottIcons2.Check, false) {
                         scope.launch { drawerState.close() }
@@ -168,7 +189,7 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
                     TopAppBar(
                         title = {
                             Text(
-                                when (ui.view) {
+                                if (showSettings) "Settings" else when (ui.view) {
                                     TottView.TASKS -> "Tasks"
                                     TottView.PROJECTS -> "Projects"
                                     TottView.INSIGHTS -> "Insights"
@@ -176,12 +197,18 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
                             )
                         },
                         navigationIcon = {
-                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                Icon(TottIcons2.Menu, contentDescription = "Menu")
+                            if (showSettings) {
+                                IconButton(onClick = { showSettings = false }) {
+                                    Icon(TottIcons2.Back, contentDescription = "Back")
+                                }
+                            } else {
+                                IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                    Icon(TottIcons2.Menu, contentDescription = "Menu")
+                                }
                             }
                         },
                         actions = {
-                            if (ui.view == TottView.TASKS) {
+                            if (!showSettings && ui.view == TottView.TASKS) {
                                 IconButton(onClick = { vm.toggleSearch() }) {
                                     Icon(TottIcons2.Search, contentDescription = "Search")
                                 }
@@ -195,7 +222,7 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
                                         DropCheck("Sort A–Z", ui.sort == TaskSort.AZ) { vm.setSort(TaskSort.AZ) }
                                         HorizontalDivider(Modifier.padding(vertical = 8.dp))
                                         DropCheck("Hide completed", ui.hideDone) { vm.toggleHideDone() }
-                                        DropdownMenuItem(text = { Text("Toggle dark theme") }, leadingIcon = { Icon(TottIcons2.Moon, null) }, onClick = { vm.setDarkExplicit(!dark); vm.closeMenu() })
+                                        DropdownMenuItem(text = { Text("Toggle dark theme") }, leadingIcon = { Icon(TottIcons2.Moon, null) }, onClick = { settings.prefs.setThemeMode(if (dark) "light" else "dark"); vm.closeMenu() })
                                     }
                                 }
                             }
@@ -206,10 +233,11 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
                     )
                 },
                 bottomBar = {
+                    if (!showSettings) {
                     NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
                         NavigationBarItem(
                             selected = ui.view == TottView.TASKS,
-                            onClick = { vm.setView(TottView.TASKS) },
+                            onClick = { showSettings = false; vm.setView(TottView.TASKS) },
                             icon = {
                                 BadgedBox(badge = {
                                     val o = vm.openCount()
@@ -220,20 +248,21 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
                         )
                         NavigationBarItem(
                             selected = ui.view == TottView.PROJECTS,
-                            onClick = { vm.setView(TottView.PROJECTS) },
+                            onClick = { showSettings = false; vm.setView(TottView.PROJECTS) },
                             icon = { Icon(TottIcons2.Folder, contentDescription = null) },
                             label = { Text("Projects") }
                         )
                         NavigationBarItem(
                             selected = ui.view == TottView.INSIGHTS,
-                            onClick = { vm.setView(TottView.INSIGHTS) },
+                            onClick = { showSettings = false; vm.setView(TottView.INSIGHTS) },
                             icon = { Icon(TottIcons2.Chart, contentDescription = null) },
                             label = { Text("Insights") }
                         )
                     }
+                    }
                 },
                 floatingActionButton = {
-                    if (ui.view == TottView.TASKS) {
+                    if (!showSettings && ui.view == TottView.TASKS) {
                         ExtendedFloatingActionButton(
                             text = { Text("New task") },
                             icon = { Icon(TottIcons2.Add, contentDescription = null) },
@@ -247,7 +276,14 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
                 snackbarHost = { SnackbarHost(snack) }
             ) { pad ->
                 Box(Modifier.padding(pad)) {
-                    when (ui.view) {
+                    if (showSettings) {
+                        SettingsScreen(
+                            prefs = settings.prefs,
+                            projectNames = ui.tasks.map { it.project }.distinct(),
+                            projectColors = vm.projectColors(),
+                            onProjectColor = { p, argb -> vm.setProjectColor(p, argb) }
+                        )
+                    } else when (ui.view) {
                         TottView.TASKS -> TasksScreen(
                             allTasks = ui.tasks,
                             visibleTasks = vm.filtered(),
@@ -269,7 +305,7 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
                             },
                             onOpenDetail = vm::openDetail
                         )
-                        TottView.PROJECTS -> ProjectsScreen(ui.tasks) { vm.setProject(it) }
+                        TottView.PROJECTS -> ProjectsScreen(ui.tasks, vm.projectColors()) { vm.setProject(it) }
                         TottView.INSIGHTS -> InsightsScreen(ui.tasks)
                     }
                 }
