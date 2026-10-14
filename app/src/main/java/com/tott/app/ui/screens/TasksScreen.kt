@@ -129,7 +129,7 @@ fun TasksScreen(
             Spacer(Modifier.height(8.dp))
         }
 
-        val today = remember(allTasks) { allTasks.filter { it.due == "Today" } }
+        val today = remember(allTasks) { allTasks.filter { TaskRepository.isDueToday(it) } }
         val doneToday = remember(today) { today.count { it.done } }
         RiseIn(0, animKey) { HeroCard(open = today.size - doneToday, total = today.size) }
         Spacer(Modifier.height(8.dp))
@@ -168,7 +168,7 @@ fun TasksScreen(
         } else {
             // Precompute groups once per list change (not per recomposition) + contentType for reuse.
             val grouped = remember(visibleTasks) {
-                listOf("Today", "Tomorrow", "Later", "Completed").mapNotNull { g ->
+                listOf("Overdue", "Today", "Tomorrow", "Later", "Completed").mapNotNull { g ->
                     val items = visibleTasks.filter { TaskRepository.groupOf(it) == g }
                     if (items.isNotEmpty()) g to items else null
                 }
@@ -277,7 +277,7 @@ fun TaskRow(t: TaskEntity, onToggle: () -> Unit, onOpen: () -> Unit) {
             val n = t.subs.size
             val d = t.subs.count { it.d }
             Text(
-                "${t.project} · ${t.due}" + if (n > 0) " · $d/$n subtasks" else "",
+                "${t.project} · ${TaskRepository.displayDue(t)}" + if (n > 0) " · $d/$n subtasks" else "",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

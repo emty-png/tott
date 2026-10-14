@@ -17,9 +17,40 @@ class TaskRepository @Inject constructor(
 ) {
     private fun box(): Box<TaskEntity> = store.boxFor(TaskEntity::class.java)
 
-    fun observeAll(): List<TaskEntity> = box().all.sortedBy { it.order }
+    private fun effectiveOrder(t: TaskEntity): Long = if (t.sortOrder != 0L) t.sortOrder else t.order
 
-    fun all(): List<TaskEntity> = box().all.sortedBy { it.order }
+    fun observeAll(): List<TaskEntity> = box().all.sortedBy { effectiveOrder(it) }
+
+    fun all(): List<TaskEntity> = box().all.sortedBy { effectiveOrder(it) }
+
+    /**
+     * One-time migration for pre-date-model installs. Idempotent: only touches
+     * tasks with unset sortOrder/dueDate. Legacy labels map to real dates.
+     */
+    fun migrateLegacy() {
+        val b = box()
+        val today = java.time.LocalDate.now().toEpochDay()
+        for (t in b.all) {
+            var dirty = false
+            if (t.sortOrder == 0L) {
+                t.sortOrder = if (t.order != 0L) t.order else System.currentTimeMillis()
+                dirty = true
+            }
+            if (t.dueDate < 0) {
+                t.dueDate = when (t.due) {
+                    "Today" -> today
+                    "Tomorrow" -> today + 1
+                    "Fri" -> {
+                        val dow = java.time.LocalDate.now().dayOfWeek.value // Mon=1..Sun=7
+                        today + ((java.time.DayOfWeek.FRIDAY.value - dow + 7) % 7)
+                    }
+                    else -> -1
+                }
+                dirty = true
+            }
+            if (dirty) b.put(t)
+        }
+    }
 
     fun get(id: Long): TaskEntity? = box().get(id)
 
@@ -32,9 +63,9 @@ class TaskRepository @Inject constructor(
 
     fun add(title: String, project: String, due: String, pri: String): TaskEntity {
         val b = box()
-        val maxOrder = (b.all.maxOfOrNull { it.order } ?: 0L) + 1
         // unshift behavior in HTML: newest first → use negative order trick; simpler: order = -maxOrder? keep insertion order reversed in query
         val t = TaskEntity(title = title, project = project.ifBlank { "Inbox" }, due = due, pri = pri, done = false, subs = emptyList(), order = System.currentTimeMillis())
+        t.sortOrder = (b.all.maxOfOrNull { if (it.sortOrder != 0L) it.sortOrder else it.order } ?: 0L) + 1
         b.put(t)
         return t
     }
@@ -107,8 +138,42 @@ class TaskRepository @Inject constructor(
     }
 
     companion object {
+        private fun todayEpoch(): Long = java.time.LocalDate.now().toEpochDay()
+
+        fun isDueToday(t: TaskEntity): Boolean =
+            if (t.dueDate >= 0) t.dueDate == todayEpoch() else t.due == "Today"
+
+        fun isOverdue(t: TaskEntity): Boolean =
+            !t.done && t.dueDate >= 0 && t.dueDate < todayEpoch()
+
+        /** Row/detail due label. Falls back to the legacy string when no real date. */
+        fun displayDue(t: TaskEntity): String {
+            if (t.dueDate < 0) return t.due
+            val off = (t.dueDate - todayEpoch()).toInt()
+            val day = when {
+                off < 0 -> "Overdue"
+                off == 0 -> "Today"
+                off == 1 -> "Tomorrow"
+                off < 7 -> java.time.LocalDate.ofEpochDay(t.dueDate).dayOfWeek
+                    .getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.getDefault())
+                else -> java.time.format.DateTimeFormatter.ofPattern("MMM d")
+                    .format(java.time.LocalDate.ofEpochDay(t.dueDate))
+            }
+            if (t.dueTime < 0) return day
+            return "$day ${"%02d:%02d".format(t.dueTime / 60, t.dueTime % 60)}"
+        }
+
         fun groupOf(t: TaskEntity): String = when {
             t.done -> "Completed"
+            t.dueDate >= 0 -> {
+                val off = (t.dueDate - todayEpoch()).toInt()
+                when {
+                    off < 0 -> "Overdue"
+                    off == 0 -> "Today"
+                    off == 1 -> "Tomorrow"
+                    else -> "Later"
+                }
+            }
             t.due == "Today" || t.due == "Tomorrow" -> t.due
             else -> "Later"
         }
@@ -123,7 +188,7 @@ class TaskRepository @Inject constructor(
         ): List<TaskEntity> {
             var l = tasks.filter { it.title.contains(q, ignoreCase = true) && (proj == null || it.project == proj) }
             when (filter) {
-                TaskFilter.TODAY -> l = l.filter { it.due == "Today" && !it.done }
+                TaskFilter.TODAY -> l = l.filter { isDueToday(it) && !it.done }
                 TaskFilter.HIGH -> l = l.filter { it.pri == "high" && !it.done }
                 TaskFilter.DONE -> l = l.filter { it.done }
                 TaskFilter.ALL -> {}

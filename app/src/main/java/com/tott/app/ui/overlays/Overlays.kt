@@ -136,7 +136,7 @@ fun DetailSheet(
             textStyle = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.fillMaxWidth()
         )
-        Text("${task.project} · Due ${task.due} · ${mapOf("high" to "High", "med" to "Medium", "low" to "Low")[task.pri]} priority",
+        Text("${task.project} · Due ${com.tott.app.data.TaskRepository.displayDue(task)} · ${mapOf("high" to "High", "med" to "Medium", "low" to "Low")[task.pri]} priority",
             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp, bottom = 8.dp))
         if (task.subs.isNotEmpty()) {

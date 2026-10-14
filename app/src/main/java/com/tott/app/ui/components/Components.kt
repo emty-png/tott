@@ -116,7 +116,7 @@ fun TaskSupportLine(t: TaskEntity) {
     val n = t.subs.size
     val d = t.subs.count { it.d }
     Text(
-        "${t.project} · ${t.due}" + if (n > 0) " · $d/$n subtasks" else "",
+        "${t.project} · ${com.tott.app.data.TaskRepository.displayDue(t)}" + if (n > 0) " · $d/$n subtasks" else "",
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )

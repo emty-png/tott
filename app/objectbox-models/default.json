@@ -5,7 +5,7 @@
   "entities": [
     {
       "id": "1:3445938173185266592",
-      "lastPropertyId": "8:5231077028746262890",
+      "lastPropertyId": "13:4131557623921126156",
       "name": "TaskEntity",
       "properties": [
         {
@@ -48,6 +48,31 @@
           "id": "8:5231077028746262890",
           "name": "order",
           "type": 6
+        },
+        {
+          "id": "9:2451501551688731157",
+          "name": "dueDate",
+          "type": 6
+        },
+        {
+          "id": "10:4336279101803115219",
+          "name": "dueTime",
+          "type": 5
+        },
+        {
+          "id": "11:5086356517357053422",
+          "name": "rrule",
+          "type": 9
+        },
+        {
+          "id": "12:1669729290544633167",
+          "name": "sortOrder",
+          "type": 6
+        },
+        {
+          "id": "13:4131557623921126156",
+          "name": "imageUris",
+          "type": 9
         }
       ],
       "relations": []

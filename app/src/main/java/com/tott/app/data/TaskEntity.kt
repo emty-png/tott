@@ -42,15 +42,37 @@ class SubtaskListConverter : PropertyConverter<List<Subtask>, String> {
     }
 }
 
+/** Unit-separator-joined string list (URIs never contain a raw US character). */
+class StringListConverter : PropertyConverter<List<String>, String> {
+    override fun convertToDatabaseValue(entityProperty: List<String>?): String {
+        return entityProperty?.joinToString("\u001F") ?: ""
+    }
+
+    override fun convertToEntityProperty(databaseValue: String?): List<String> {
+        if (databaseValue.isNullOrEmpty()) return emptyList()
+        return databaseValue.split("\u001F")
+    }
+}
+
 @Entity
 data class TaskEntity(
     @Id var id: Long = 0,
     var title: String = "",
     var project: String = "Inbox",
-    var due: String = "Today", // Today | Tomorrow | Fri (+ future dates)
+    var due: String = "Today", // legacy label; used only when dueDate < 0
     var pri: String = "med", // high | med | low
     var done: Boolean = false,
     @Convert(converter = SubtaskListConverter::class, dbType = String::class)
     var subs: List<Subtask> = emptyList(),
-    var order: Long = 0
+    var order: Long = 0,
+    /** Epoch day (LocalDate.toEpochDay). -1 = legacy `due` string. */
+    var dueDate: Long = -1,
+    /** Minutes since midnight. -1 = no time. */
+    var dueTime: Int = -1,
+    /** Recurrence: "" | "daily" | "weekly". */
+    var rrule: String = "",
+    /** Manual position. 0 = not yet migrated (falls back to `order`). */
+    var sortOrder: Long = 0,
+    @Convert(converter = StringListConverter::class, dbType = String::class)
+    var imageUris: List<String> = emptyList()
 )

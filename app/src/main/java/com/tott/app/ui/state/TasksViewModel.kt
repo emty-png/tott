@@ -45,12 +45,14 @@ class TasksViewModel @Inject constructor(
     private var lastDeleted: TaskEntity? = null
     private var lastCleared: List<TaskEntity>? = null
     private var lastToggledToDone: Long? = null
+    private val migrated = java.util.concurrent.atomic.AtomicBoolean(false)
 
     init { refresh() }
 
     // DB I/O off the main thread; lists are small but this keeps scroll/input jank-free.
     fun refresh() {
         viewModelScope.launch(Dispatchers.IO) {
+            if (migrated.compareAndSet(false, true)) repo.migrateLegacy()
             val all = repo.all()
             _ui.update { it.copy(tasks = all) }
         }

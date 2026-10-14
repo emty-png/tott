@@ -111,7 +111,12 @@ fun InsightsScreen(tasks: List<TaskEntity>) {
     val d = tasks.count { it.done }
     val n = tasks.size
     val r = if (n == 0) 0 else Math.round(d.toFloat() / n.toFloat() * 100)
-    val days = listOf("Today", "Tomorrow", "Fri").map { k -> k to tasks.count { it.due == k && !it.done } }
+    val todayEpoch = java.time.LocalDate.now().toEpochDay()
+    val fridayEpoch = todayEpoch + ((java.time.DayOfWeek.FRIDAY.value - java.time.LocalDate.now().dayOfWeek.value + 7) % 7)
+    val dayEpochs = listOf("Today" to todayEpoch, "Tomorrow" to (todayEpoch + 1), "Fri" to fridayEpoch)
+    val days = dayEpochs.map { (k, e) ->
+        k to tasks.count { t -> !t.done && (if (t.dueDate >= 0) t.dueDate == e else t.due == k) }
+    }
     val mx = maxOf(1, days.maxOf { it.second })
     val hi = tasks.count { it.pri == "high" && !it.done }
     LazyColumn(
