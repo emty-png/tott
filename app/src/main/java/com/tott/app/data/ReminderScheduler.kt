@@ -66,32 +66,91 @@ class ReminderScheduler @Inject constructor(
     fun fireIfDue(id: Long) {
         val t = repo.get(id) ?: return
         if (t.done) return
-        postNotification(t.id, t.title, "${t.project} · ${TaskRepository.displayDue(t)}")
+        notifyTask(t)
     }
 
     fun sendTest() {
         postNotification(-1, "Test reminder", "Notifications are working")
     }
 
-    fun postNotification(id: Long, title: String, text: String) {
+    fun snooze(id: Long, minutes: Long) {
+        val t = repo.get(id) ?: return
+        if (t.done) return
+        val req = OneTimeWorkRequestBuilder<ReminderWorker>()
+            .setInitialDelay(minutes, TimeUnit.MINUTES)
+            .setInputData(workDataOf(REMINDER_KEY_ID to id))
+            .build()
+        wm().enqueueUniqueWork(REMINDER_WORK_PREFIX + id, ExistingWorkPolicy.REPLACE, req)
+    }
+
+    fun notifyTask(t: TaskEntity) {
         ensureChannel()
+        val due = TaskRepository.displayDue(t)
+        val doneSubs = t.subs.count { it.d }
+        val big = buildString {
+            append("${t.project} · $due")
+            if (t.rrule.isNotEmpty()) append(" · repeats ${t.rrule}")
+            if (t.subs.isNotEmpty()) {
+                append("\n\n")
+                t.subs.take(5).forEach { s ->
+                    append(if (s.d) "✓ " else "○ ")
+                    appendLine(s.t)
+                }
+                if (t.subs.size > 5) appendLine("…and ${t.subs.size - 5} more")
+            }
+        }.trimEnd()
+        val b = baseBuilder(t.id, t.title, "${t.project} · $due", t.id)
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText(big)
+                    .setSummaryText("tott")
+            )
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+        if (t.subs.isNotEmpty()) b.setProgress(t.subs.size, doneSubs, false)
+        b.addAction(
+            R.drawable.ic_notif, "Mark done",
+            actionIntent(t.id, ReminderActionReceiver.ACTION_DONE, t.id.toInt() + 1000)
+        )
+        b.addAction(
+            R.drawable.ic_notif, "Snooze 10 min",
+            actionIntent(t.id, ReminderActionReceiver.ACTION_SNOOZE, t.id.toInt() + 2000)
+        )
+        val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.notify(t.id.toInt(), b.build())
+    }
+
+    private fun actionIntent(taskId: Long, action: String, reqCode: Int): PendingIntent {
+        val intent = Intent(ctx, ReminderActionReceiver::class.java).apply {
+            this.action = action
+            putExtra(REMINDER_KEY_ID, taskId)
+        }
+        return PendingIntent.getBroadcast(
+            ctx, reqCode, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    private fun baseBuilder(id: Long, title: String, text: String, detailId: Long): NotificationCompat.Builder {
         val intent = Intent(ctx, MainActivity::class.java).apply {
-            if (id > 0) putExtra("open_detail", id)
+            if (detailId > 0) putExtra("open_detail", detailId)
         }
         val pi = PendingIntent.getActivity(
             ctx, id.toInt(),
             intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        return NotificationCompat.Builder(ctx, REMINDER_CHANNEL)
+            .setSmallIcon(R.drawable.ic_notif)
+            .setColor(0xFF6750A4.toInt())
+            .setContentTitle(title)
+            .setContentText(text)
+            .setAutoCancel(true)
+            .setContentIntent(pi)
+    }
+
+    fun postNotification(id: Long, title: String, text: String) {
+        ensureChannel()
         val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.notify(
-            id.toInt(),
-            NotificationCompat.Builder(ctx, REMINDER_CHANNEL)
-                .setSmallIcon(R.drawable.ic_notif)
-                .setContentTitle(title)
-                .setContentText(text)
-                .setAutoCancel(true)
-                .setContentIntent(pi)
-                .build()
-        )
+        nm.notify(id.toInt(), baseBuilder(id, title, text, id).build())
     }
 }

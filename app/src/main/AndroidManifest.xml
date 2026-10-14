@@ -32,6 +32,9 @@
             </intent-filter>
         </receiver>
         <receiver
+            android:name=".data.ReminderActionReceiver"
+            android:exported="false" />
+        <receiver
             android:name=".widget.TottWidgetReceiver"
             android:exported="false">
             <intent-filter>
