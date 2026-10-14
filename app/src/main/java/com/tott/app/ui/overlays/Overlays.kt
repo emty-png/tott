@@ -82,11 +82,12 @@ fun AddTaskDialog(
     initialProject: String?,
     initialDate: Long? = null,
     onDismiss: () -> Unit,
-    onSave: (title: String, project: String, dueDate: Long, dueTime: Int, pri: String) -> Unit
+    onSave: (title: String, project: String, dueDate: Long, dueTime: Int, pri: String, rrule: String) -> Unit
 ) {
     val todayEpoch = remember { java.time.LocalDate.now().toEpochDay() }
     var title by remember { mutableStateOf("") }
     var pri by remember { mutableStateOf("Medium") }
+    var repeat by remember { mutableStateOf("Never") }
     var dueDate by remember { mutableStateOf(initialDate ?: todayEpoch) }
     var dueTime by remember { mutableStateOf(-1) }
     var proj by remember { mutableStateOf(initialProject ?: "Inbox") }
@@ -121,6 +122,8 @@ fun AddTaskDialog(
                 TextButton(onClick = { dueDate = -1; dueTime = -1 }) { Text("Clear") }
             }
         }
+        Text("Repeat", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
+        SegmentedRow(listOf("Never", "Daily", "Weekly"), repeat) { repeat = it }
         Text("Project", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             projects.forEach { p ->
@@ -135,7 +138,8 @@ fun AddTaskDialog(
             Button(
                 onClick = {
                     val priKey = mapOf("Low" to "low", "Medium" to "med", "High" to "high")[pri] ?: "med"
-                    onSave(title.trim(), newProj.trim().ifBlank { proj }, dueDate, dueTime, priKey)
+                    val rr = mapOf("Never" to "", "Daily" to "daily", "Weekly" to "weekly")[repeat] ?: ""
+                    onSave(title.trim(), newProj.trim().ifBlank { proj }, dueDate, dueTime, priKey, rr)
                 },
                 enabled = title.isNotBlank()
             ) { Text("Save") }
@@ -203,7 +207,8 @@ fun DetailSheet(
             textStyle = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.fillMaxWidth()
         )
-        Text("${task.project} · Due ${com.tott.app.data.TaskRepository.displayDue(task)} · ${mapOf("high" to "High", "med" to "Medium", "low" to "Low")[task.pri]} priority",
+        val repeatLabel = when (task.rrule) { "daily" -> " · Repeats daily"; "weekly" -> " · Repeats weekly"; else -> "" }
+        Text("${task.project} · Due ${com.tott.app.data.TaskRepository.displayDue(task)}$repeatLabel · ${mapOf("high" to "High", "med" to "Medium", "low" to "Low")[task.pri]} priority",
             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp, bottom = 8.dp))
         if (task.subs.isNotEmpty()) {

@@ -105,7 +105,10 @@ class TasksViewModel @Inject constructor(
 
     fun toggle(id: Long): Pair<String, Boolean> {
         val t = repo.get(id) ?: return "" to false
-        repo.toggle(id); syncReminder(id); refresh()
+        repo.toggle(id)
+        // Completing a recurring task spawns its next occurrence (undo reopens; spawned copy stays).
+        if (!t.done && t.rrule.isNotEmpty()) repo.spawnNext(id)
+        syncReminder(id); refresh()
         return if (!t.done) {
             lastToggledToDone = id
             "Task completed" to true
@@ -144,8 +147,8 @@ class TasksViewModel @Inject constructor(
         lastCleared = null
     }
 
-    fun addTask(title: String, project: String, dueDate: Long, dueTime: Int, pri: String) {
-        val t = repo.addFull(title, project, dueDate, dueTime, pri)
+    fun addTask(title: String, project: String, dueDate: Long, dueTime: Int, pri: String, rrule: String = "") {
+        val t = repo.addFull(title, project, dueDate, dueTime, pri, rrule)
         syncReminder(t.id); refresh()
     }
 

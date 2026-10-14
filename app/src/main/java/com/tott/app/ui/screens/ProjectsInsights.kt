@@ -119,6 +119,15 @@ fun InsightsScreen(tasks: List<TaskEntity>) {
     }
     val mx = maxOf(1, days.maxOf { it.second })
     val hi = tasks.count { it.pri == "high" && !it.done }
+    val activeRepeats = tasks.count { !it.done && it.rrule.isNotEmpty() }
+    val streak = remember(tasks) {
+        val doneDays = tasks.filter { it.done && it.doneDate >= 0 }.map { it.doneDate }.toSortedSet()
+        var s = 0
+        var day = todayEpoch
+        if (!doneDays.contains(day)) day-- // allow today-in-progress
+        while (doneDays.contains(day)) { s++; day-- }
+        s
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 112.dp)
@@ -158,6 +167,33 @@ fun InsightsScreen(tasks: List<TaskEntity>) {
         item {
             Spacer(Modifier.height(12.dp))
             CardRise(1) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+            ) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Day streak", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                        Text(
+                            if (streak > 0) "$streak ${if (streak == 1) "day" else "days"} in a row"
+                            else "Complete a task to start",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                    Text(
+                        if (activeRepeats > 0) "$activeRepeats repeat${if (activeRepeats == 1) "" else "s"}" else "",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+            }
+            }
+        }
+        item {
+            Spacer(Modifier.height(12.dp))
+            CardRise(2) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),

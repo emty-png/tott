@@ -71,6 +71,8 @@ data class TaskEntity(
     var dueTime: Int = -1,
     /** Recurrence: "" | "daily" | "weekly". */
     var rrule: String = "",
+    /** Epoch day the task was completed. -1 = open/unknown. */
+    var doneDate: Long = -1,
     /** Manual position. 0 = not yet migrated (falls back to `order`). */
     var sortOrder: Long = 0,
     @Convert(converter = StringListConverter::class, dbType = String::class)

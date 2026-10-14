@@ -5,7 +5,7 @@
   "entities": [
     {
       "id": "1:3445938173185266592",
-      "lastPropertyId": "13:4131557623921126156",
+      "lastPropertyId": "14:8535416514910180372",
       "name": "TaskEntity",
       "properties": [
         {
@@ -73,6 +73,11 @@
           "id": "13:4131557623921126156",
           "name": "imageUris",
           "type": 9
+        },
+        {
+          "id": "14:8535416514910180372",
+          "name": "doneDate",
+          "type": 6
         }
       ],
       "relations": []

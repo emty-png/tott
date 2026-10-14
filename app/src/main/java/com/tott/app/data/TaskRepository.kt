@@ -36,6 +36,10 @@ class TaskRepository @Inject constructor(
                 t.sortOrder = if (t.order != 0L) t.order else System.currentTimeMillis()
                 dirty = true
             }
+            if (t.done && t.doneDate < 0) {
+                t.doneDate = today
+                dirty = true
+            }
             if (t.dueDate < 0) {
                 t.dueDate = when (t.due) {
                     "Today" -> today
@@ -57,8 +61,28 @@ class TaskRepository @Inject constructor(
     fun toggle(id: Long): TaskEntity? {
         val t = box().get(id) ?: return null
         t.done = !t.done
+        t.doneDate = if (t.done) java.time.LocalDate.now().toEpochDay() else -1
         box().put(t)
         return t
+    }
+
+    /** Spawn the next occurrence of a completed recurring task. Returns new id or -1. */
+    fun spawnNext(id: Long): Long {
+        val b = box()
+        val t = b.get(id) ?: return -1
+        if (!t.done || (t.rrule != "daily" && t.rrule != "weekly")) return -1
+        if (t.dueDate < 0) return -1
+        val next = t.copy(
+            id = 0,
+            done = false,
+            doneDate = -1,
+            dueDate = t.dueDate + if (t.rrule == "daily") 1 else 7,
+            subs = t.subs.map { it.copy(d = false) },
+            order = System.currentTimeMillis(),
+            sortOrder = (b.all.maxOfOrNull { if (it.sortOrder != 0L) it.sortOrder else it.order } ?: 0L) + 1
+        )
+        b.put(next)
+        return next.id
     }
 
     fun add(title: String, project: String, due: String, pri: String): TaskEntity {

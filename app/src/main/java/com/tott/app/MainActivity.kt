@@ -382,8 +382,8 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
                             initialProject = ui.project,
                             initialDate = ui.addDate,
                             onDismiss = vm::closeAdd,
-                            onSave = { title, proj, dueDate, dueTime, pri ->
-                                vm.addTask(title, proj, dueDate, dueTime, pri)
+                            onSave = { title, proj, dueDate, dueTime, pri, rrule ->
+                                vm.addTask(title, proj, dueDate, dueTime, pri, rrule)
                                 vm.closeAdd()
                                 scope.launch { showSnack("Task added", null) }
                             }
