@@ -12,6 +12,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history + tags so the changelog can list
+          # every commit since the previous tag.
+          fetch-depth: 0
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -35,7 +39,71 @@ jobs:
         run: ./gradlew :app:assembleRelease --stacktrace
       - name: Rename APK
         run: cp app/build/outputs/apk/release/app-release.apk tott-${{ github.ref_name }}.apk
+      # Group every commit since the previous tag by its
+      # conventional-commit prefix (feat/fix/perf/chore/…).
+      - name: Build categorized changelog
+        env:
+          CUR_TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 - <<'EOF'
+          import os, subprocess
+
+          cur = os.environ["CUR_TAG"]
+          repo = os.environ.get("REPO", "")
+
+          tags = subprocess.run(
+              ["git", "tag", "--sort=-v:refname"],
+              capture_output=True, text=True, check=True,
+          ).stdout.split()
+          prev = next((t for t in tags if t != cur), "")
+          rng = "HEAD" if not prev else f"{prev}..HEAD"
+          print(f"Changelog range: {rng or '(empty)'}")
+
+          log = subprocess.run(
+              ["git", "log", rng, "--pretty=format:%s%x1f%h", "--reverse"] if rng else [],
+              capture_output=True, text=True, check=True,
+          ).stdout.strip().splitlines() if rng else []
+
+          sections = [
+              ("feat", "✨ Features"),
+              ("fix", "🐛 Fixes"),
+              ("perf", "⚡ Performance"),
+              ("chore", "🔧 Chores"),
+          ]
+          grouped = {k: [] for k, _ in sections}
+          other = []
+          for line in log:
+              if not line.strip():
+                  continue
+              subject, _, sha = line.partition("\x1f")
+              subject = subject.strip()
+              low = subject.lower()
+              hit = False
+              for key, _ in sections:
+                  if low.startswith(key + ":") or low.startswith(key + "("):
+                      body = subject.split(":", 1)[1].strip() if ":" in subject else subject
+                      grouped[key].append(f"- {body} (`{sha.strip()}`)")
+                      hit = True
+                      break
+              if not hit:
+                  other.append(f"- {subject} (`{sha.strip()}`)")
+
+          lines = ["## What's Changed", ""]
+          for key, title in sections:
+              if grouped[key]:
+                  lines += [f"### {title}", ""] + grouped[key] + [""]
+          if other:
+              lines += ["### 📦 Other", ""] + other + [""]
+          if not log:
+              lines += ["No commits in range.", ""]
+          if prev and repo:
+              lines += [f"**Full Changelog**: https://github.com/{repo}/compare/{prev}...{cur}", ""]
+          with open("CHANGELOG.md", "w") as f:
+              f.write("\n".join(lines))
+          print("\n".join(lines))
+          EOF
       - uses: softprops/action-gh-release@v2
         with:
           files: tott-*.apk
-          generate_release_notes: true
+          bodyFile: CHANGELOG.md
