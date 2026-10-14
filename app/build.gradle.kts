@@ -18,11 +18,18 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Ship 64 + 32-bit ARM only: cuts ObjectBox native libs (~40% smaller APK, faster installs).
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            // Sideloadable release signed with the debug key: no debugger/JDWP overhead,
+            // much smoother animations/scroll than a debug build. Same signature = clean update.
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

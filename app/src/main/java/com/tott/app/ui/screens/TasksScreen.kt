@@ -129,8 +129,8 @@ fun TasksScreen(
             Spacer(Modifier.height(8.dp))
         }
 
-        val today = allTasks.filter { it.due == "Today" }
-        val doneToday = today.count { it.done }
+        val today = remember(allTasks) { allTasks.filter { it.due == "Today" } }
+        val doneToday = remember(today) { today.count { it.done } }
         RiseIn(0, animKey) { HeroCard(open = today.size - doneToday, total = today.size) }
         Spacer(Modifier.height(8.dp))
 
@@ -166,26 +166,29 @@ fun TasksScreen(
                 }
             }
         } else {
-            val groups = listOf("Today", "Tomorrow", "Later", "Completed")
+            // Precompute groups once per list change (not per recomposition) + contentType for reuse.
+            val grouped = remember(visibleTasks) {
+                listOf("Today", "Tomorrow", "Later", "Completed").mapNotNull { g ->
+                    val items = visibleTasks.filter { TaskRepository.groupOf(it) == g }
+                    if (items.isNotEmpty()) g to items else null
+                }
+            }
             var flat = 1
             LazyColumn(state = listState, contentPadding = PaddingValues(bottom = 112.dp)) {
-                groups.forEach { g ->
-                    val items = visibleTasks.filter { TaskRepository.groupOf(it) == g }
-                    if (items.isNotEmpty()) {
-                        val hi = flat; flat++
-                        item(key = "h-$g") {
-                            RiseIn(hi, animKey) { GroupHeader(g) }
-                        }
-                        items(items, key = { it.id }) { t ->
-                            val idx = flat; flat++
-                            RiseIn(idx, animKey) {
-                                SwipeTaskRow(
-                                    t,
-                                    onToggle = { onToggle(t.id) },
-                                    onDelete = { onDelete(t.id) },
-                                    onOpen = { onOpenDetail(t.id) }
-                                )
-                            }
+                grouped.forEach { (g, items) ->
+                    val hi = flat; flat++
+                    item(key = "h-$g", contentType = "header") {
+                        RiseIn(hi, animKey) { GroupHeader(g) }
+                    }
+                    items(items, key = { it.id }, contentType = { "task" }) { t ->
+                        val idx = flat; flat++
+                        RiseIn(idx, animKey) {
+                            SwipeTaskRow(
+                                t,
+                                onToggle = { onToggle(t.id) },
+                                onDelete = { onDelete(t.id) },
+                                onOpen = { onOpenDetail(t.id) }
+                            )
                         }
                     }
                 }

@@ -1,16 +1,19 @@
 package com.tott.app.ui.state
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.tott.app.data.TaskEntity
 import com.tott.app.data.TaskFilter
 import com.tott.app.data.TaskRepository
 import com.tott.app.data.TaskSort
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 enum class TottView { TASKS, PROJECTS, INSIGHTS }
 
@@ -45,8 +48,12 @@ class TasksViewModel @Inject constructor(
 
     init { refresh() }
 
+    // DB I/O off the main thread; lists are small but this keeps scroll/input jank-free.
     fun refresh() {
-        _ui.update { it.copy(tasks = repo.all()) }
+        viewModelScope.launch(Dispatchers.IO) {
+            val all = repo.all()
+            _ui.update { it.copy(tasks = all) }
+        }
     }
 
     fun filtered(): List<TaskEntity> {

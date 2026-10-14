@@ -119,6 +119,8 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
     val compact by settings.prefs.compact.collectAsState()
     val reduceMotion by settings.prefs.reduceMotion.collectAsState()
     val dark = when (mode) { "light" -> false; "dark" -> true; else -> systemDark }
+    // Filter once per input change, not per recomposition (scroll/animation frames).
+    val visibleTasks = remember(ui.tasks, ui.query, ui.project, ui.filter, ui.hideDone, ui.sort) { vm.filtered() }
     var showSettings by remember { mutableStateOf(false) }
     BackHandler(enabled = showSettings) { showSettings = false }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -286,7 +288,7 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
                     } else when (ui.view) {
                         TottView.TASKS -> TasksScreen(
                             allTasks = ui.tasks,
-                            visibleTasks = vm.filtered(),
+                            visibleTasks = visibleTasks,
                             query = ui.query,
                             searchVisible = ui.searchVisible,
                             filter = ui.filter,
