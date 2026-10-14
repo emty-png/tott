@@ -73,6 +73,7 @@ import com.tott.app.ui.icons.TottIcons2
 import com.tott.app.ui.overlays.AddTaskDialog
 import com.tott.app.ui.overlays.DetailSheet
 import com.tott.app.ui.overlays.FocusSheet
+import com.tott.app.ui.screens.CalendarScreen
 import com.tott.app.ui.screens.InsightsScreen
 import com.tott.app.ui.screens.ProjectsScreen
 import com.tott.app.ui.screens.TasksScreen
@@ -172,6 +173,7 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
                     Text("TaskFlow", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(16.dp))
                     DrawerItem("Tasks", TottIcons2.Task, ui.view == TottView.TASKS && !showSettings) { vm.setView(TottView.TASKS); showSettings = false; scope.launch { drawerState.close() } }
                     DrawerItem("Projects", TottIcons2.Folder, ui.view == TottView.PROJECTS && !showSettings) { vm.setView(TottView.PROJECTS); showSettings = false; scope.launch { drawerState.close() } }
+                    DrawerItem("Calendar", TottIcons2.Calendar, ui.view == TottView.CALENDAR && !showSettings) { vm.setView(TottView.CALENDAR); showSettings = false; scope.launch { drawerState.close() } }
                     DrawerItem("Insights", TottIcons2.Chart, ui.view == TottView.INSIGHTS && !showSettings) { vm.setView(TottView.INSIGHTS); showSettings = false; scope.launch { drawerState.close() } }
                     DrawerItem("Settings", TottIcons2.Settings, showSettings) { showSettings = true; scope.launch { drawerState.close() } }
                     HorizontalDivider(Modifier.padding(16.dp))
@@ -194,6 +196,7 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
                                 if (showSettings) "Settings" else when (ui.view) {
                                     TottView.TASKS -> "Tasks"
                                     TottView.PROJECTS -> "Projects"
+                                    TottView.CALENDAR -> "Calendar"
                                     TottView.INSIGHTS -> "Insights"
                                 }
                             )
@@ -255,6 +258,12 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
                             label = { Text("Projects") }
                         )
                         NavigationBarItem(
+                            selected = ui.view == TottView.CALENDAR,
+                            onClick = { showSettings = false; vm.setView(TottView.CALENDAR) },
+                            icon = { Icon(TottIcons2.Calendar, contentDescription = null) },
+                            label = { Text("Calendar") }
+                        )
+                        NavigationBarItem(
                             selected = ui.view == TottView.INSIGHTS,
                             onClick = { showSettings = false; vm.setView(TottView.INSIGHTS) },
                             icon = { Icon(TottIcons2.Chart, contentDescription = null) },
@@ -308,6 +317,15 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
                             onOpenDetail = vm::openDetail
                         )
                         TottView.PROJECTS -> ProjectsScreen(ui.tasks, vm.projectColors()) { vm.setProject(it) }
+                        TottView.CALENDAR -> CalendarScreen(
+                            tasks = ui.tasks,
+                            onToggle = { id ->
+                                val (msg, canUndo) = vm.toggle(id)
+                                scope.launch { showSnack(msg, if (canUndo) vm::undoToggle else null) }
+                            },
+                            onOpenDetail = vm::openDetail,
+                            onAddOnDay = { day -> vm.openAdd(day) }
+                        )
                         TottView.INSIGHTS -> InsightsScreen(ui.tasks)
                     }
                 }
@@ -322,9 +340,10 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
                         AddTaskDialog(
                             projects = listOf("Inbox") + ui.tasks.map { it.project }.filter { it != "Inbox" }.distinct(),
                             initialProject = ui.project,
+                            initialDate = ui.addDate,
                             onDismiss = vm::closeAdd,
-                            onSave = { title, proj, due, pri ->
-                                vm.addTask(title, proj, due, pri)
+                            onSave = { title, proj, dueDate, dueTime, pri ->
+                                vm.addTask(title, proj, dueDate, dueTime, pri)
                                 vm.closeAdd()
                                 scope.launch { showSnack("Task added", null) }
                             }

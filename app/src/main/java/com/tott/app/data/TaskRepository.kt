@@ -62,9 +62,25 @@ class TaskRepository @Inject constructor(
     }
 
     fun add(title: String, project: String, due: String, pri: String): TaskEntity {
+        val today = java.time.LocalDate.now().toEpochDay()
+        val epoch = when (due) {
+            "Today" -> today
+            "Tomorrow" -> today + 1
+            else -> today + ((java.time.DayOfWeek.FRIDAY.value - java.time.LocalDate.now().dayOfWeek.value + 7) % 7)
+        }
+        return addFull(title, project, epoch, -1, pri)
+    }
+
+    fun addFull(title: String, project: String, dueDate: Long, dueTime: Int, pri: String, rrule: String = ""): TaskEntity {
         val b = box()
-        // unshift behavior in HTML: newest first → use negative order trick; simpler: order = -maxOrder? keep insertion order reversed in query
-        val t = TaskEntity(title = title, project = project.ifBlank { "Inbox" }, due = due, pri = pri, done = false, subs = emptyList(), order = System.currentTimeMillis())
+        val legacy = if (dueDate < 0) "Later" else displayDue(
+            TaskEntity(dueDate = dueDate, dueTime = dueTime)
+        ).substringBefore(" ")
+        val t = TaskEntity(
+            title = title, project = project.ifBlank { "Inbox" }, due = legacy,
+            pri = pri, done = false, subs = emptyList(), order = System.currentTimeMillis(),
+            dueDate = dueDate, dueTime = dueTime, rrule = rrule
+        )
         t.sortOrder = (b.all.maxOfOrNull { if (it.sortOrder != 0L) it.sortOrder else it.order } ?: 0L) + 1
         b.put(t)
         return t

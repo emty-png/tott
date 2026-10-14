@@ -1,9 +1,11 @@
 package com.tott.app.ui.icons
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DarkMode
@@ -30,7 +32,9 @@ object TottIcons2 {
     val More: ImageVector = Icons.Filled.MoreVert
     val Moon: ImageVector = Icons.Filled.DarkMode
     val Back: ImageVector = Icons.Filled.ArrowBack
+    val Forward: ImageVector = Icons.AutoMirrored.Filled.ArrowForward
     val Settings: ImageVector = Icons.Filled.Settings
     // Bar chart path is custom in HTML (P_CHART); platform glyph guarantees it renders.
     val Chart: ImageVector = Icons.Filled.BarChart
+    val Calendar: ImageVector = Icons.Filled.CalendarMonth
 }

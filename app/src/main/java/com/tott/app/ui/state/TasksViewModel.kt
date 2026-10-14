@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class TottView { TASKS, PROJECTS, INSIGHTS }
+enum class TottView { TASKS, PROJECTS, CALENDAR, INSIGHTS }
 
 data class TottUiState(
     val view: TottView = TottView.TASKS,
@@ -29,6 +29,7 @@ data class TottUiState(
     val darkTheme: Boolean? = null, // null = follow system
     val detailId: Long? = null,
     val showAdd: Boolean = false,
+    val addDate: Long? = null,
     val showMenu: Boolean = false,
     val showDrawer: Boolean = false,
     val focusId: Long? = null
@@ -83,8 +84,8 @@ class TasksViewModel @Inject constructor(
     // overlays
     fun openDetail(id: Long) = _ui.update { it.copy(detailId = id) }
     fun closeDetail() = _ui.update { it.copy(detailId = null) }
-    fun openAdd() = _ui.update { it.copy(showAdd = true) }
-    fun closeAdd() = _ui.update { it.copy(showAdd = false) }
+    fun openAdd(date: Long? = null) = _ui.update { it.copy(showAdd = true, addDate = date) }
+    fun closeAdd() = _ui.update { it.copy(showAdd = false, addDate = null) }
     fun openMenu() = _ui.update { it.copy(showMenu = true) }
     fun closeMenu() = _ui.update { it.copy(showMenu = false) }
     fun openDrawer() = _ui.update { it.copy(showDrawer = true) }
@@ -131,8 +132,8 @@ class TasksViewModel @Inject constructor(
         lastCleared = null
     }
 
-    fun addTask(title: String, project: String, due: String, pri: String) {
-        repo.add(title, project, due, pri); refresh()
+    fun addTask(title: String, project: String, dueDate: Long, dueTime: Int, pri: String) {
+        repo.addFull(title, project, dueDate, dueTime, pri); refresh()
     }
 
     fun projectColors(): Map<String, Long> = repo.projectColorMap()

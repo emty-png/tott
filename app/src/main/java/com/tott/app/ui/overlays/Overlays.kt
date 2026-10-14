@@ -18,7 +18,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -73,18 +75,35 @@ fun SegmentedRow(options: List<String>, selected: String, onSelect: (String) -> 
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTaskDialog(
     projects: List<String>,
     initialProject: String?,
+    initialDate: Long? = null,
     onDismiss: () -> Unit,
-    onSave: (title: String, project: String, due: String, pri: String) -> Unit
+    onSave: (title: String, project: String, dueDate: Long, dueTime: Int, pri: String) -> Unit
 ) {
+    val todayEpoch = remember { java.time.LocalDate.now().toEpochDay() }
     var title by remember { mutableStateOf("") }
     var pri by remember { mutableStateOf("Medium") }
-    var due by remember { mutableStateOf("Today") }
+    var dueDate by remember { mutableStateOf(initialDate ?: todayEpoch) }
+    var dueTime by remember { mutableStateOf(-1) }
     var proj by remember { mutableStateOf(initialProject ?: "Inbox") }
     var newProj by remember { mutableStateOf("") }
+    var showDate by remember { mutableStateOf(false) }
+    var showTime by remember { mutableStateOf(false) }
+
+    fun dateLabel(): String {
+        if (dueDate < 0) return "Pick date"
+        val off = (dueDate - todayEpoch).toInt()
+        return when {
+            off == 0 -> "Today"
+            off == 1 -> "Tomorrow"
+            else -> java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d")
+                .format(java.time.LocalDate.ofEpochDay(dueDate))
+        }
+    }
 
     Column(Modifier.padding(24.dp).verticalScroll(rememberScrollState()).imePadding()) {
         Text("New task", style = MaterialTheme.typography.headlineSmall)
@@ -93,7 +112,15 @@ fun AddTaskDialog(
         Text("Priority", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
         SegmentedRow(listOf("Low", "Medium", "High"), pri) { pri = it }
         Text("Due", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
-        SegmentedRow(listOf("Today", "Tomorrow", "Fri"), due) { due = it }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { showDate = true }) { Text(dateLabel()) }
+            OutlinedButton(onClick = { showTime = true }, enabled = dueDate >= 0) {
+                Text(if (dueTime < 0) "Add time" else "%02d:%02d".format(dueTime / 60, dueTime % 60))
+            }
+            if (dueDate >= 0 || dueTime >= 0) {
+                TextButton(onClick = { dueDate = -1; dueTime = -1 }) { Text("Clear") }
+            }
+        }
         Text("Project", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             projects.forEach { p ->
@@ -108,11 +135,51 @@ fun AddTaskDialog(
             Button(
                 onClick = {
                     val priKey = mapOf("Low" to "low", "Medium" to "med", "High" to "high")[pri] ?: "med"
-                    onSave(title.trim(), newProj.trim().ifBlank { proj }, due, priKey)
+                    onSave(title.trim(), newProj.trim().ifBlank { proj }, dueDate, dueTime, priKey)
                 },
                 enabled = title.isNotBlank()
             ) { Text("Save") }
         }
+    }
+
+    if (showDate) {
+        val dpState = androidx.compose.material3.rememberDatePickerState(
+            initialSelectedDateMillis = (if (dueDate >= 0) dueDate else todayEpoch) * 86_400_000
+        )
+        androidx.compose.material3.DatePickerDialog(
+            onDismissRequest = { showDate = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    dpState.selectedDateMillis?.let { dueDate = it / 86_400_000 }
+                    showDate = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { showDate = false }) { Text("Cancel") } }
+        ) { androidx.compose.material3.DatePicker(state = dpState) }
+    }
+    if (showTime) {
+        val tpState = androidx.compose.material3.rememberTimePickerState(
+            initialHour = if (dueTime >= 0) dueTime / 60 else 9,
+            initialMinute = if (dueTime >= 0) dueTime % 60 else 0,
+            is24Hour = true
+        )
+        AlertDialog(
+            onDismissRequest = { showTime = false },
+            title = { Text("Time") },
+            text = { androidx.compose.material3.TimePicker(state = tpState) },
+            confirmButton = {
+                TextButton(onClick = {
+                    dueTime = tpState.hour * 60 + tpState.minute
+                    showTime = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { dueTime = -1; showTime = false }) { Text("Remove") }
+                    TextButton(onClick = { showTime = false }) { Text("Cancel") }
+                }
+            }
+        )
     }
 }
 
