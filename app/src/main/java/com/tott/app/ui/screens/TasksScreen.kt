@@ -1,11 +1,13 @@
 package com.tott.app.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,7 +47,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.tott.app.data.TaskEntity
@@ -89,6 +94,8 @@ fun TasksScreen(
     onOpenDetail: (Long) -> Unit
 ) {
     val animKey = "$filter|$project|$query"
+    val searchRequester = remember { FocusRequester() }
+    LaunchedEffect(searchVisible) { if (searchVisible) searchRequester.requestFocus() }
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         if (searchVisible) {
             Row(
@@ -113,7 +120,7 @@ fun TasksScreen(
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent
                     ),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().focusRequester(searchRequester)
                 )
             }
             Spacer(Modifier.height(8.dp))
@@ -219,6 +226,14 @@ private fun SwipeTaskRow(t: TaskEntity, onToggle: () -> Unit, onDelete: () -> Un
 
 @Composable
 fun TaskRow(t: TaskEntity, onToggle: () -> Unit, onOpen: () -> Unit) {
+    // 1:1 pop 400ms on check
+    val pop = remember(t.id) { Animatable(1f) }
+    LaunchedEffect(t.done) {
+        if (t.done) {
+            pop.animateTo(1.3f, tween(160, easing = FastOutSlowInEasing))
+            pop.animateTo(1f, tween(240, easing = FastOutSlowInEasing))
+        }
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -228,13 +243,14 @@ fun TaskRow(t: TaskEntity, onToggle: () -> Unit, onOpen: () -> Unit) {
             .padding(vertical = 12.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // circle checkbox 1:1 (.chk)
+        // circle checkbox 1:1 (.chk 24px, 2px outline ring)
         Box(
             modifier = Modifier
                 .padding(horizontal = 4.dp)
                 .size(24.dp)
-                .clip(CircleShape)
-                .background(if (t.done) MaterialTheme.colorScheme.primary else Color.Transparent)
+                .graphicsLayer(scaleX = pop.value, scaleY = pop.value)
+                .border(2.dp, if (t.done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, CircleShape)
+                .background(if (t.done) MaterialTheme.colorScheme.primary else Color.Transparent, CircleShape)
                 .clickable(onClick = onToggle),
             contentAlignment = Alignment.Center
         ) {

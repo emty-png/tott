@@ -1,6 +1,7 @@
 package com.tott.app.ui.overlays
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -140,8 +141,9 @@ fun DetailSheet(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
-                        modifier = Modifier.size(24.dp).clip(CircleShape)
-                            .background(if (s.d) MaterialTheme.colorScheme.primary else Color.Transparent)
+                        modifier = Modifier.size(24.dp)
+                            .border(2.dp, if (s.d) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, CircleShape)
+                            .background(if (s.d) MaterialTheme.colorScheme.primary else Color.Transparent, CircleShape)
                             .clickable { onToggleSub(i) },
                         contentAlignment = Alignment.Center
                     ) {

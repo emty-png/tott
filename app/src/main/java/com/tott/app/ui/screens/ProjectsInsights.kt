@@ -1,5 +1,10 @@
 package com.tott.app.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,6 +24,11 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,6 +36,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.background
 import androidx.compose.ui.text.font.FontWeight
 import com.tott.app.data.TaskEntity
+
+@Composable
+private fun CardRise(index: Int, content: @Composable () -> Unit) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+    val delay = kotlin.math.min(index, 10) * 35
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(350, delay, FastOutSlowInEasing)) +
+            slideInVertically(tween(350, delay, FastOutSlowInEasing)) { it / 2 }
+    ) { content() }
+}
 
 @Composable
 fun ProjectsScreen(tasks: List<TaskEntity>, onOpenProject: (String) -> Unit) {
@@ -37,6 +59,7 @@ fun ProjectsScreen(tasks: List<TaskEntity>, onOpenProject: (String) -> Unit) {
         items(names, key = { it }) { n ->
             val l = tasks.filter { it.project == n }
             val d = l.count { it.done }
+            CardRise(names.indexOf(n)) {
             Card(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clickable { onOpenProject(n) },
                 shape = RoundedCornerShape(12.dp),
@@ -64,6 +87,7 @@ fun ProjectsScreen(tasks: List<TaskEntity>, onOpenProject: (String) -> Unit) {
                     )
                 }
             }
+            }
         }
     }
 }
@@ -81,6 +105,7 @@ fun InsightsScreen(tasks: List<TaskEntity>) {
         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 112.dp)
     ) {
         item {
+            CardRise(0) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)) {
                 Card(
                     modifier = Modifier.weight(1f),
@@ -109,7 +134,11 @@ fun InsightsScreen(tasks: List<TaskEntity>) {
                     }
                 }
             }
+            }
+        }
+        item {
             Spacer(Modifier.height(12.dp))
+            CardRise(1) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
@@ -148,6 +177,7 @@ fun InsightsScreen(tasks: List<TaskEntity>) {
                         }
                     }
                 }
+            }
             }
         }
     }
