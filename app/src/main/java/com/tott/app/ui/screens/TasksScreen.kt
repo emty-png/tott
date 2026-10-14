@@ -277,7 +277,9 @@ fun TaskRow(t: TaskEntity, onToggle: () -> Unit, onOpen: () -> Unit) {
                 Spacer(Modifier.height(8.dp))
                 LinearProgressIndicator(
                     progress = { d.toFloat() / n.toFloat() },
-                    modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp))
+                    modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                    gapSize = 0.dp,
+                    drawStopIndicator = {}
                 )
             }
         }

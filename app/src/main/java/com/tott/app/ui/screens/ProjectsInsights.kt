@@ -83,7 +83,9 @@ fun ProjectsScreen(tasks: List<TaskEntity>, onOpenProject: (String) -> Unit) {
                     Spacer(Modifier.height(16.dp))
                     LinearProgressIndicator(
                         progress = { if (l.isEmpty()) 0f else d.toFloat() / l.size.toFloat() },
-                        modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp))
+                        modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                        gapSize = 0.dp,
+                        drawStopIndicator = {}
                     )
                 }
             }

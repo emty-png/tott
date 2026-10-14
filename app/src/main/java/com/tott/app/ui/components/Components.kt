@@ -103,7 +103,9 @@ fun HeroCard(open: Int, total: Int) {
             progress = { frac },
             modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
             color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.16f)
+            trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.16f),
+            gapSize = 0.dp,
+            drawStopIndicator = {}
         )
     }
 }
@@ -121,7 +123,9 @@ fun TaskSupportLine(t: TaskEntity) {
         Spacer(Modifier.height(8.dp))
         LinearProgressIndicator(
             progress = { if (n == 0) 0f else d.toFloat() / n.toFloat() },
-            modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp))
+            modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+            gapSize = 0.dp,
+            drawStopIndicator = {}
         )
     }
 }

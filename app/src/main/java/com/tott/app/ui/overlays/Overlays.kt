@@ -184,7 +184,9 @@ fun FocusSheet(title: String, secondsLeft: Int, running: Boolean, onRunPause: ()
         Text(fmt(secondsLeft), style = MaterialTheme.typography.displayLarge)
         LinearProgressIndicator(
             progress = { (1500 - secondsLeft).toFloat() / 1500f },
-            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp).height(4.dp).clip(RoundedCornerShape(2.dp))
+            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp).height(4.dp).clip(RoundedCornerShape(2.dp)),
+            gapSize = 0.dp,
+            drawStopIndicator = {}
         )
         Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
             OutlinedButton(onClick = onReset) { Text("Reset") }
