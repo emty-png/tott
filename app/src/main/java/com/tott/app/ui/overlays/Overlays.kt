@@ -187,17 +187,21 @@ fun AddTaskDialog(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class, com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi::class)
 @Composable
 fun DetailSheet(
     task: TaskEntity,
     onRename: (String) -> Unit,
     onToggleSub: (Int) -> Unit,
     onAddSub: (String) -> Unit,
+    onAddImages: () -> Unit,
+    onRemoveImage: (String) -> Unit,
     onDelete: () -> Unit,
     onFocus: () -> Unit,
     onToggleDone: () -> Unit
 ) {
     var newSub by remember(task.id) { mutableStateOf("") }
+    var viewer by remember(task.id) { mutableStateOf<String?>(null) }
     Column(Modifier.padding(24.dp).verticalScroll(rememberScrollState()).imePadding()) {
         var title by remember(task.id, task.title) { mutableStateOf(task.title) }
         OutlinedTextField(
@@ -243,12 +247,50 @@ fun DetailSheet(
                 colors = IconButtonDefaults.filledTonalIconButtonColors()
             ) { Icon(TottIcons2.Add, contentDescription = "Add subtask") }
         }
+        Text("Photos", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            task.imageUris.forEach { path ->
+                Box(Modifier.size(64.dp)) {
+                    com.bumptech.glide.integration.compose.GlideImage(
+                        model = java.io.File(path),
+                        contentDescription = "Attachment",
+                        modifier = Modifier.size(64.dp).clip(RoundedCornerShape(8.dp)).clickable { viewer = path }
+                    )
+                    IconButton(
+                        onClick = { onRemoveImage(path) },
+                        modifier = Modifier.size(24.dp).align(Alignment.TopEnd)
+                            .background(Color.Black.copy(alpha = 0.55f), CircleShape)
+                    ) { Icon(TottIcons2.Close, contentDescription = "Remove photo", tint = Color.White, modifier = Modifier.size(16.dp)) }
+                }
+            }
+            IconButton(
+                onClick = onAddImages,
+                colors = IconButtonDefaults.filledTonalIconButtonColors(),
+                modifier = Modifier.size(64.dp)
+            ) { Icon(TottIcons2.Add, contentDescription = "Add photos") }
+        }
         Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.End) {
             TextButton(onClick = onDelete) { Text("Delete") }
             Spacer(Modifier.width(8.dp))
             OutlinedButton(onClick = onFocus) { Text("Focus") }
             Spacer(Modifier.width(8.dp))
             Button(onClick = onToggleDone) { Text(if (task.done) "Reopen" else "Mark done") }
+        }
+    }
+    viewer?.let { path ->
+        androidx.compose.ui.window.Dialog(onDismissRequest = { viewer = null }) {
+            Box(Modifier.fillMaxWidth()) {
+                com.bumptech.glide.integration.compose.GlideImage(
+                    model = java.io.File(path),
+                    contentDescription = "Attachment fullscreen",
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                )
+                IconButton(
+                    onClick = { viewer = null },
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(),
+                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+                ) { Icon(TottIcons2.Close, contentDescription = "Close") }
+            }
         }
     }
 }

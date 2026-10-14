@@ -40,7 +40,8 @@ data class TottUiState(
 @HiltViewModel
 class TasksViewModel @Inject constructor(
     private val repo: TaskRepository,
-    private val reminders: ReminderScheduler
+    private val reminders: ReminderScheduler,
+    @dagger.hilt.android.qualifiers.ApplicationContext private val appCtx: android.content.Context
 ) : ViewModel() {
     private val _ui = MutableStateFlow(TottUiState())
     val ui: StateFlow<TottUiState> = _ui.asStateFlow()
@@ -167,5 +168,37 @@ class TasksViewModel @Inject constructor(
 
     fun moveTask(id: Long, targetId: Long, placeBefore: Boolean) {
         repo.moveTask(id, targetId, placeBefore); refresh()
+    }
+
+    fun addImages(id: Long, uris: List<android.net.Uri>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val t = repo.get(id) ?: return@launch
+            val dir = java.io.File(appCtx.filesDir, "attachments").apply { mkdirs() }
+            val paths = uris.mapNotNull { uri ->
+                try {
+                    val safe = (uri.lastPathSegment?.takeLast(24) ?: "img").replace(Regex("[^A-Za-z0-9._-]"), "_")
+                    val out = java.io.File(dir, "${id}_${System.currentTimeMillis()}_$safe")
+                    appCtx.contentResolver.openInputStream(uri)?.use { ins ->
+                        out.outputStream().use { ins.copyTo(it) }
+                    }
+                    out.absolutePath
+                } catch (e: Exception) { null }
+            }
+            if (paths.isNotEmpty()) {
+                t.imageUris = t.imageUris + paths
+                repo.put(t)
+                refresh()
+            }
+        }
+    }
+
+    fun removeImage(id: Long, path: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val t = repo.get(id) ?: return@launch
+            t.imageUris = t.imageUris.filter { it != path }
+            repo.put(t)
+            try { java.io.File(path).delete() } catch (e: Exception) {}
+            refresh()
+        }
     }
 }

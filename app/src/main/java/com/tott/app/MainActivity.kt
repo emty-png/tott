@@ -146,6 +146,11 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
         deepLink?.let { vm.openDetail(it); activity.pendingDetail.value = null }
     }
     val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    var attachTarget by remember { mutableStateOf<Long?>(null) }
+    val pickImages = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
+        attachTarget?.let { vm.addImages(it, uris) }
+        attachTarget = null
+    }
     LaunchedEffect(firstRun) {
         if (!firstRun && Build.VERSION.SDK_INT >= 33 &&
             androidx.core.content.ContextCompat.checkSelfPermission(
@@ -403,6 +408,8 @@ fun TottRoot(vm: TasksViewModel = hiltViewModel(), settings: SettingsViewModel =
                         onRename = { vm.renameTask(detail.id, it) },
                         onToggleSub = { vm.toggleSub(detail.id, it) },
                         onAddSub = { vm.addSub(detail.id, it) },
+                        onAddImages = { attachTarget = detail.id; pickImages.launch("image/*") },
+                        onRemoveImage = { path -> vm.removeImage(detail.id, path) },
                         onDelete = {
                             vm.closeDetail()
                             val msg = vm.delete(detail.id)

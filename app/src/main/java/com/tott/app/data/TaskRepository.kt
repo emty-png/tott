@@ -58,6 +58,8 @@ class TaskRepository @Inject constructor(
 
     fun get(id: Long): TaskEntity? = box().get(id)
 
+    fun put(t: TaskEntity) = box().put(t)
+
     fun toggle(id: Long): TaskEntity? {
         val t = box().get(id) ?: return null
         t.done = !t.done
@@ -136,6 +138,7 @@ class TaskRepository @Inject constructor(
 
     fun delete(id: Long): TaskEntity? {
         val t = box().get(id) ?: return null
+        t.imageUris.forEach { try { java.io.File(it).delete() } catch (e: Exception) {} }
         box().remove(t)
         return t
     }
@@ -146,6 +149,7 @@ class TaskRepository @Inject constructor(
 
     fun clearCompleted(): List<TaskEntity> {
         val gone = box().query(TaskEntity_.done.equal(true)).build().find()
+        gone.forEach { t -> t.imageUris.forEach { u -> try { java.io.File(u).delete() } catch (e: Exception) {} } }
         box().remove(gone)
         return gone
     }
